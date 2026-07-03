@@ -1,0 +1,4 @@
+# 本 repo 自身的雜物
+*.log
+.DS_Store
+Thumbs.db

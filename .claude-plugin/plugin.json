@@ -1,0 +1,10 @@
+{
+  "name": "octopus",
+  "displayName": "Octopus",
+  "description": "個人後端工作流 harness：一顆頭（你，TPM）+ 八隻腳（8 個專家 agent）。需求釐清、DB 三方言諮詢、codebase 考古、SDD spec→build 交付管線。",
+  "version": "0.1.0",
+  "author": {
+    "name": "ml-vicre"
+  },
+  "keywords": ["backend", "workflow", "sdd", "tpm", "harness"]
+}

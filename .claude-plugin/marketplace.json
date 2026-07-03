@@ -1,0 +1,13 @@
+{
+  "name": "octopus",
+  "owner": {
+    "name": "ml-vicre"
+  },
+  "plugins": [
+    {
+      "name": "octopus",
+      "source": ".",
+      "description": "個人後端工作流 harness：一顆頭（TPM）+ 八隻腳（8 個專家 agent）。需求釐清、DB 三方言諮詢、codebase 考古、SDD spec→build 交付管線。"
+    }
+  ]
+}
