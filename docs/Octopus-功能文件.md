@@ -62,7 +62,10 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 | Builder | 「實作不碰主幹」——一律 feature branch | 失去 TPM 合併權 |
 | Reviewer | 「驗收出口」——solo 最缺的第二雙眼睛 | 沒人抓你的盲點，問題進 production |
 | Debugger | 「根因 vs 症狀」——不只修哪行炸 | 同一類 bug 反覆出現 |
-| （Core） | 路由——確定性，不佔 agent 檔 | — |
+| Examiner | 「理解 vs 盲簽」——動到程式邏輯的變更，定案前 TPM 要講得出功能行為 | 盲簽 merge，長期喪失對自己 codebase 的掌握（理解債） |
+| （Core） | 路由——確定性，屬頭不佔腳 | — |
+
+> 「八隻腳」＝上列 8 個 agent persona；Core 是編排（commands＋主對話），屬於頭的延伸，不佔腳、不設 agent 檔（§3.0）。
 
 ### 2.2 刻意不設的角色（與理由）
 
@@ -176,6 +179,16 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 | 輸出 | 根因報告（症狀→定位過程→根因→修法選項；修法有取捨時用決策卡） |
 | 紅線 | 區分「確認的根因」與「推測」，不得把推測寫成結論 |
 
+### 3.8 Examiner（考官）
+
+| | |
+|---|---|
+| 職責 | merge 前的**認知債對齊**：檢核對象是「TPM 的認知 ↔ 成品現況」——spec↔code 的對齊是 Reviewer 的事，考官在 Reviewer 之後出場，以審查通過的現況為答案依據。依 diff＋spec 出 2~4 題功能理解題（改動後的行為、設計取捨、失效模式），**優先取材 spec 未釘死、Builder 自主決定的點**（那是 TPM 唯一沒在場的決策現場，認知債只長在那裡）；答錯或答不出就講解現況並引 code（file:line）。**教學型，不是閘門** |
+| 觸發 | 僅 build 管線、變更**動到程式碼層面的邏輯**才觸發；純文案/註解/格式/設定調整跳過。quick 不觸發——意圖與變更之間沒有自主距離，且判準已排除高風險，沒有落差可抓。附著在硬停點二，不新增硬停點 |
+| 輸入 | branch diff（唯讀 git 指令）＋對應 spec（如有）＋驗收報告（如有） |
+| 輸出 | 考題（逐題問答，多輪經 SendMessage 往返）＋理解檢核摘要（每題一行判定，附在驗收報告後）。若對齊中 TPM 表示「這個自主決定不是我要的」，如實記入摘要——裁量在 TPM 的驗收停點，不經考官判斷 |
+| 紅線 | **不考檔名、路徑、函式名等實作瑣事——考的是功能理解，不是記憶力**；不論答題結果 merge 權在 TPM，不得建議「不准 merge」；只讀不改；每題答案須有依據（diff/spec/code 推導），不杜撰 |
+
 ---
 
 ## 4. TPM 三介面規格
@@ -257,6 +270,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
   → Builder：照 tasks 在 feature branch 實作＋測試
   → Reviewer：驗收報告
   → 有 P1？→ 自動退回 Builder 修 → 重審（迴圈，上限 3 輪）
+  → Examiner：理解檢核（動到程式邏輯才觸發，逐題問答＋講解）
   →【硬停點二：TPM 驗收 → merge】→ command 改標 Implemented
 ```
 
@@ -266,6 +280,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 - **硬停點只有兩個**：① spec 鎖定（決定做什麼）② 驗收 merge（決定什麼進主幹）——TPM 權力核心，任何模式都要人類明確回答
 - **執行段例外停點（事件觸發，非排程確認）**：高風險決策（spec 未涵蓋且涉及 migration / 權限認證 / 對外契約 / 不可逆）、P1 三輪修不乾淨、實作中發現 spec 矛盾
 - **step 模式（可選）**：command 輸入含 `step` 時改為逐步確認——給想盯流程的場合；預設是自主模式
+- **理解檢核不是新停點**：Examiner 的問答附著在硬停點二之內（反正 TPM 本來就要停下來驗收），答錯採講解不擋 merge，因此不改變「硬停點只有兩個」的不變量
 
 ### 5.3 SDD 整合細節
 
@@ -333,6 +348,12 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 - WHEN 輸入 spec 狀態非 Locked，build SHALL 拒絕啟動並說明缺什麼
 - 所有 code 變更 SHALL 發生在 feature branch；SHALL NOT 直接改主幹
 
+**Examiner**
+- WHEN build 變更動到程式碼層面的邏輯，管線 SHALL 於硬停點二前啟動理解檢核；WHEN 變更僅為文案/註解/格式/設定，SHALL 略過；quick 通道 SHALL NOT 觸發理解檢核
+- 考題 SHALL 針對功能行為、設計取捨與失效模式，並 SHALL 優先取材 spec 未釘死、Builder 自主決定之處；SHALL NOT 考檔名、路徑、函式名等實作瑣事
+- WHEN 回答錯誤或不完整，Examiner SHALL 講解現況並引 code（file:line），SHALL NOT 阻擋 merge 或建議禁止 merge
+- 理解檢核 SHALL 附著於硬停點二，SHALL NOT 新增硬停點；WHEN TPM 於對齊中表示自主決定不符其意，Examiner SHALL 如實記入摘要，SHALL NOT 自行裁決
+
 **Reviewer**
 - 驗收報告 SHALL 逐條對應 spec 驗收標準，無遺漏
 - WHEN 變更涉及 migration/交易/權限/對外介面，SHALL 列入高風險變更點段落（含 file:line）
@@ -359,6 +380,7 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 |---|---|---|---|
 | **P1 諮詢+輕通道** | Scout / Analyst / DBA + ask / db / quick | ✅ 已實作 | 在真實 repo 裝上後：`/octopus:db` 問三方言問題、`/octopus:ask` 問 codebase 問題，回答含來源標註 |
 | **P2 SDD 交付管線** | Architect / Builder / Reviewer / Debugger + spec / build / main / debug / review + command 層流程閘門 + Arena 決策沉澱 | ✅ 已實作（閘門為 command 步驟，見 §6.2） | 拿一個真實 SDD 專案走完 spec→Locked→build→驗收報告→merge 全程 |
+| **P2.1 理解檢核** | Examiner + build merge 前整合（quick 不考） | ✅ 已實作 | 動到程式邏輯的 build 於 merge 前出題問答；答錯獲得講解且不擋 merge |
 | **P3 基建** | 程式化 hooks 備援、session memory + `/octopus:recall`、模型分級（Scout 輕量、其餘重） | ⏳ 未做 | — |
 
 ---

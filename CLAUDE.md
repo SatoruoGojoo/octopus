@@ -40,8 +40,9 @@ docs/Octopus-功能文件.md          權威設計文件
 | reviewer | 品質閘門 | Read/Grep/Glob/Bash（唯讀） | 只審不改；7 級嚴重度＋高風險掃描；多步寫入必查交易保護 |
 | dba | DB 諮詢 | Read/Grep/Glob | 唯讀、不連實體 DB；SQL Server/SQLite/PostgreSQL 三方言 |
 | debugger | 根因 | Read/Grep/Glob/Bash（唯讀） | 不修檔；確認的根因與推測必須分開寫 |
+| examiner | 理解 vs 盲簽 | Read/Grep/Glob/Bash（唯讀） | 只讀不改；出功能理解題不考檔名/實作瑣事；教學不擋門——答錯講解、不得建議禁止 merge |
 
-> 「八隻腳」＝上列 7 個 agent persona ＋ **(Core)**；Core 是編排層（commands＋主對話），**刻意不設 agent 檔**（設計文件 §2.1 / §3.0）。新增 agent 前先回設計文件確認該邊界存在。
+> 「八隻腳」＝上列 8 個 agent persona；**(Core)** 是編排層（commands＋主對話），屬頭不佔腳、**刻意不設 agent 檔**（設計文件 §2.1 / §3.0）。新增 agent 前先回設計文件確認該邊界存在。
 
 ## SDD 交付管線（核心流程）
 
@@ -52,6 +53,8 @@ docs/Octopus-功能文件.md          權威設計文件
 2. **驗收 merge**（build 段尾）：TPM 看驗收報告後自行 merge。
 
 build 段預設全自主（實作→測試→審查→P1 自動退修，上限 3 輪），**例外才停**：高風險決策（migration/權限/對外契約/不可逆且 spec 未涵蓋）、P1 三輪修不乾淨、實作中發現 spec 矛盾。指令加 `step` 改逐步確認模式。
+
+**理解檢核（examiner）不是新停點**：build 變更動到程式邏輯時，硬停點二之前由 examiner 出 2~4 題功能理解題逐題問答——檢核的是「TPM 認知 ↔ 成品」的差異（spec↔code 對齊歸 reviewer），出題優先取材 spec 未釘死、builder 自主決定的點；純文案/註解/格式/設定跳過；quick 不觸發；答錯採講解＋引 code，不擋 merge。
 
 ### spec 狀態機（重要不變量）
 
