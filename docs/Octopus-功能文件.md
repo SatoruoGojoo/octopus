@@ -304,13 +304,22 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 **v0.1 實作方式：閘門寫在 command 的確定性步驟裡**（build 入口先 Read spec frontmatter，非 `Locked` 直接拒絕；Builder agent 自己再驗一次＝雙重檢查；狀態流轉只由 command 在 TPM 明確確認後 Edit）。
 
-**Phase 3 備援：程式化 hooks**（防 agent 被說服繞過 prompt 層閘門）：
+**v0.2 程式化 hooks 備援（第一批，已實作）**：plugin 附帶 PreToolUse hooks（`hooks/hooks.json`），防 agent 被說服繞過 prompt 層閘門。挑選標準＝「失守代價最大的兩條紅線」。工程慣例：純 node、零相依、**fail-open**（hook 自身故障一律放行，不卡流程）、判斷邏輯以 `evaluate()` export 可獨立驗證、擋下訊息 zh-TW 並附解法。
+
+| Hook | 攔截 | 守的不變量 | 例外（留痕） |
+|---|---|---|---|
+| `hooks/branch-guard.mjs` | PreToolUse(Bash) | **主幹保護**：擋「在 main/master 上 `git commit` / `git push`」「push 到 main/master」「`git merge`（`--abort`/`--quit` 善後除外）」「任何 force push」；同一指令串內 `checkout`/`switch` 換到主幹也會被追蹤 | TPM 明確同意時指示在指令前加 `OCTOPUS_TPM_OK=1 `——例外寫在指令裡＝可稽核 |
+| `hooks/spec-status-guard.mjs` | PreToolUse(Edit\|Write) | **spec 狀態機**：`status` 只能單步順向 `Draft → Locked → Implemented`，禁回退、禁跳關、禁刪除或憑空插入 status 行；新 spec 只能生為 `Draft` | 回退/修復由 TPM 親手改檔（hook 只攔 Claude 的工具呼叫） |
+
+界線：hook 守**確定性不變量**（程式能判定的）；「TPM 拍板才鎖」的時序仍由 command 流程負責——hook 無從得知對話中誰點了頭，這條界線是刻意的，不要試圖用 hook 驗語意。
+
+**Phase 3 其餘備援（未做）**：
 
 | 時機 | 驗什麼 |
 |---|---|
 | SubagentStart | Builder 動工前必有 tasks/TODO 清單 |
 | SubagentStop | Reviewer 報告必含「高風險變更點」段落；Builder 產出必在 feature branch 上 |
-| build 入口 | spec frontmatter 非 `Locked` → 程式直接擋下 |
+| build 入口 | spec frontmatter 非 `Locked` → 程式直接擋下（現由 command 步驟＋Builder 雙重檢查） |
 
 ### 6.3 寫入隔離：feature branch
 
@@ -381,7 +390,7 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 | **P1 諮詢+輕通道** | Scout / Analyst / DBA + ask / db / quick | ✅ 已實作 | 在真實 repo 裝上後：`/octopus:db` 問三方言問題、`/octopus:ask` 問 codebase 問題，回答含來源標註 |
 | **P2 SDD 交付管線** | Architect / Builder / Reviewer / Debugger + spec / build / main / debug / review + command 層流程閘門 + Arena 決策沉澱 | ✅ 已實作（閘門為 command 步驟，見 §6.2） | 拿一個真實 SDD 專案走完 spec→Locked→build→驗收報告→merge 全程 |
 | **P2.1 理解檢核** | Examiner + build merge 前整合（quick 不考） | ✅ 已實作 | 動到程式邏輯的 build 於 merge 前出題問答；答錯獲得講解且不擋 merge |
-| **P3 基建** | 程式化 hooks 備援、session memory + `/octopus:recall`、模型分級（Scout 輕量、其餘重） | ⏳ 未做 | — |
+| **P3 基建** | 程式化 hooks 備援、session memory + `/octopus:recall`、模型分級（Scout 輕量、其餘重） | 🔶 部分完成：hooks 第一批 ✅（主幹保護＋spec 狀態機，見 §6.2）；其餘 hooks / memory / 模型分級 ⏳ | 在目標 repo 實測：主幹 commit、force push、spec 跳關改 status 皆被 exit 2 擋下且訊息可讀 |
 
 ---
 
