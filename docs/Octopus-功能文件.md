@@ -306,6 +306,8 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 **v0.2 程式化 hooks 備援（第一批，已實作）**：plugin 附帶 PreToolUse hooks（`hooks/hooks.json`），防 agent 被說服繞過 prompt 層閘門。挑選標準＝「失守代價最大的兩條紅線」。工程慣例：純 node、零相依、**fail-open**（hook 自身故障一律放行，不卡流程）、判斷邏輯以 `evaluate()` export 可獨立驗證、擋下訊息 zh-TW 並附解法。
 
+**熱路徑成本（hook 是 user-scope，每個專案的每次工具呼叫都會跑）**：hook 必須先用純字串判斷確認「這次呼叫可能踩到不變量」，才做任何昂貴動作（spawn 子行程、讀檔）。`branch-guard` 由此定下不變量：**指令不含 `git` 時直接 exit 0，不查分支**——`evaluate()` 對這類指令本來就恆回傳 `null`，查了也用不到。子行程只為真正需要 `branch` 的規則（主幹上的 `git commit`、裸 `git push`）而開。
+
 | Hook | 攔截 | 守的不變量 | 例外（留痕） |
 |---|---|---|---|
 | `hooks/branch-guard.mjs` | PreToolUse(Bash) | **主幹保護**：擋「在 main/master 上 `git commit` / `git push`」「push 到 main/master」「`git merge`（`--abort`/`--quit` 善後除外）」「任何 force push」；同一指令串內 `checkout`/`switch` 換到主幹也會被追蹤 | TPM 明確同意時指示在指令前加 `OCTOPUS_TPM_OK=1 `——例外寫在指令裡＝可稽核 |

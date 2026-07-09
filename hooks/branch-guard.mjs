@@ -12,6 +12,10 @@ import { pathToFileURL } from "node:url";
 
 const MAINLINES = ["main", "master"];
 
+// evaluate() 逐段檢查的第一道門就是這個 pattern：不含 git 的段落一律略過。
+// 因此整條指令都不含 git 時，currentBranch 不可能被讀到 —— 提前放行，省下查分支的子行程。
+const MENTIONS_GIT = /\bgit\b/;
+
 /**
  * 純判斷邏輯（可獨立驗證）。
  * @param {string} command  Bash 工具收到的指令字串
@@ -32,7 +36,7 @@ export function evaluate(command, currentBranch) {
   let branch = currentBranch;
 
   for (const seg of segments) {
-    if (!/\bgit\b/.test(seg)) continue;
+    if (!MENTIONS_GIT.test(seg)) continue;
 
     // 分支切換追蹤：checkout/switch 到既有分支（-b/-c 開新分支則取新名）
     const sw = seg.match(
@@ -116,6 +120,8 @@ async function main() {
     if (payload.tool_name !== "Bash") process.exit(0);
 
     const command = payload.tool_input?.command || "";
+    if (!MENTIONS_GIT.test(command)) process.exit(0);
+
     let branch = null;
     try {
       branch = execSync("git rev-parse --abbrev-ref HEAD", {
