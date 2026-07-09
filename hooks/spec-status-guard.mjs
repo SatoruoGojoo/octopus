@@ -11,6 +11,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const ORDER = { Draft: 0, Locked: 1, Implemented: 2 };
+const STDIN_TIMEOUT_MS = 5000;
 const LOOSE_STATUS_RE = /^status:[ \t]*(Draft|Locked|Implemented)\b/m;
 
 /** 從完整檔案內容抽 frontmatter 內的 status（檔案不是 spec 回傳 null） */
@@ -102,9 +103,32 @@ function defaultReadFile(p) {
   }
 }
 
-function main() {
+/**
+ * 非同步讀 stdin，逾時回傳 null（fail-open）。
+ * 不用 readFileSync(0)：它同步阻塞直到 EOF，harness 沒關 stdin 就永不返回，
+ * 且此時 event loop 已卡死，setTimeout 看門狗救不了（設計文件 §6.2）。
+ */
+function readStdin(timeoutMs) {
+  return new Promise((resolve) => {
+    let data = "";
+    const done = (value) => {
+      clearTimeout(timer);
+      process.stdin.destroy();
+      resolve(value);
+    };
+    const timer = setTimeout(() => done(null), timeoutMs);
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => (data += chunk));
+    process.stdin.on("end", () => done(data));
+    process.stdin.on("error", () => done(null));
+  });
+}
+
+async function main() {
   try {
-    const payload = JSON.parse(readFileSync(0, "utf8"));
+    const raw = await readStdin(STDIN_TIMEOUT_MS);
+    if (raw == null) process.exit(0); // 讀不到 payload → fail-open
+    const payload = JSON.parse(raw);
     if (payload.tool_name !== "Edit" && payload.tool_name !== "Write") {
       process.exit(0);
     }
