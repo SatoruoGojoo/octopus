@@ -8,6 +8,7 @@
 // fail-open：hook 自身錯誤一律放行（exit 0），不卡流程。
 
 import { readFileSync, existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const ORDER = { Draft: 0, Locked: 1, Implemented: 2 };
@@ -104,6 +105,25 @@ function defaultReadFile(p) {
 }
 
 /**
+ * 守門跟著 octopus 走（設計文件 §6.2）：從 cwd 往上找 .claude/.octopus-arena/
+ * （/octopus:init 建立）。找不到＝非 octopus 專案，守門不啟動。
+ * 判定不了（讀檔錯誤等）回傳 false，fail-open 放行。
+ */
+function inOctopusProject(startDir) {
+  try {
+    let dir = resolve(startDir || process.cwd());
+    while (true) {
+      if (existsSync(join(dir, ".claude", ".octopus-arena"))) return true;
+      const parent = dirname(dir);
+      if (parent === dir) return false;
+      dir = parent;
+    }
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 非同步讀 stdin，逾時回傳 null（fail-open）。
  * 不用 readFileSync(0)：它同步阻塞直到 EOF，harness 沒關 stdin 就永不返回，
  * 且此時 event loop 已卡死，setTimeout 看門狗救不了（設計文件 §6.2）。
@@ -132,6 +152,7 @@ async function main() {
     if (payload.tool_name !== "Edit" && payload.tool_name !== "Write") {
       process.exit(0);
     }
+    if (!inOctopusProject(payload.cwd)) process.exit(0); // 守門跟著 octopus 走
     const message = evaluate(payload.tool_name, payload.tool_input || {});
     if (message) {
       process.stderr.write(message);

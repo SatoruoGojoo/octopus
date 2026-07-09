@@ -308,6 +308,8 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 **熱路徑成本（hook 是 user-scope，每個專案的每次工具呼叫都會跑）**：hook 必須先用純字串判斷確認「這次呼叫可能踩到不變量」，才做任何昂貴動作（spawn 子行程、讀檔）。`branch-guard` 由此定下不變量：**指令不含 `git` 時直接 exit 0，不查分支**——`evaluate()` 對這類指令本來就恆回傳 `null`，查了也用不到。子行程只為真正需要 `branch` 的規則（主幹上的 `git commit`、裸 `git push`）而開。
 
+**生效範圍——守門跟著 octopus 走**：plugin hook 是 user-scope（plugin 啟用後，在使用者所有專案的工具呼叫前執行），但保護該跟著交付管線走、不是跟著機器走。兩支 hook 做任何昂貴動作前，先從 payload `cwd` 往上找 `.claude/.octopus-arena/`（`/octopus:init` 建立的 Arena）——**找到才啟動守門，找不到直接 exit 0**。亦即：init 過的專案＝受保護；沒 init 的專案（含 octopus plugin repo 本身）＝hook 零干預。要讓專案受保護→跑 `/octopus:init`；要解除→移除該專案的 Arena 目錄（Arena 同時是「此專案由 octopus 管理」的標記）。判定不了（讀檔錯誤等）視為非 octopus 專案，fail-open 放行。
+
 **阻塞等待一律要有上界**：hook 卡住的代價是整個工具呼叫卡住（實測曾撞到 harness 的 hook timeout 上限）。凡是等外部的動作都要能自己逾時，逾時即 fail-open 放行：
 
 - 讀 stdin payload 用**非同步讀＋逾時**（`readStdin()`，5s）。**不可用 `readFileSync(0)`**——它同步阻塞 event loop 直到 EOF，harness 沒關 stdin 就永遠不返回，而且 `setTimeout` 看門狗此時根本觸發不了。
