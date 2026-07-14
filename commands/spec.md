@@ -1,11 +1,13 @@
 ---
-description: SDD 前半段：需求釐清（反問+挑戰）→ EARS spec＋tasklist 一次落檔（Draft）→ TPM 拍板鎖定。鎖定後 build 全自主執行。
+description: SDD 前半段：需求釐清（反問+挑戰）→ EARS spec＋tasklist 一次落檔（Draft）→ TPM 拍板鎖定（回一個 OK 即可）。鎖定後 build 全自主執行。
 argument-hint: <需求描述（可貼文字/截圖）>
 ---
 
 這是 Octopus 的 **spec 管線**（SDD 前半段）。你（主對話）擔任 Core 編排，依序執行。
 
 設計原則：**討論集中在這一段，拍板只有一次**。TPM 在鎖定點看到的是完整包（spec＋決策卡＋tasklist），鎖定之後 `/octopus:build` 全自主執行，他不需要再被打斷。
+
+> 拍板停點很輕：呈現完整包後，使用者回「**OK**」＝所有決策卡採建議選項＋同意鎖定，一個字放行；有意見才回話逐項處理。只有 `/octopus:main auto` 會跳過本停點（鎖定改由 build 入口自動完成＋留痕）。
 
 ## 步驟
 
@@ -22,13 +24,13 @@ argument-hint: <需求描述（可貼文字/截圖）>
 
 產出：`specs/NNN-<slug>/spec.md`（`status: Draft`）＋ `specs/NNN-<slug>/tasks.md` ＋ 決策卡清單（如有）。
 
-### 3.【唯一硬停點：拍板與鎖定】
+### 3.【拍板 OK 停點】（`/octopus:main auto` 才跳過本步與步驟 4）
 向使用者一次呈現完整包：
 - spec 路徑與摘要（目標 / In-Out / 驗收標準條數）
 - 所有待拍板決策卡
 - tasklist（相依順序）
 
-請他拍板：決策卡結論用 Edit 寫進 spec 的「已拍板決策」表；然後問**要不要鎖定**。
+請他拍板：回「**OK**」＝所有決策卡採建議選項＋同意鎖定，一次完成；有個別意見就逐項處理。結論（含 OK 時採用的建議選項）用 Edit 寫進 spec 的「已拍板決策」表。
 
 ### 4. 鎖定（確定性動作，使用者明確說鎖才執行）
 - 用 Edit 把 frontmatter `status: Draft` 改為 `status: Locked`
@@ -38,7 +40,7 @@ argument-hint: <需求描述（可貼文字/截圖）>
 使用者不鎖（還要想/要先問別人）→ 保持 Draft，正常結束。
 
 ## 紅線
-- 狀態流轉只由本 command 的步驟 4 執行，agent 無權改 status
+- 狀態流轉只由 command 的確定性步驟執行（本管線的步驟 4，或 build 入口的自動鎖定），agent 無權改 status
 - Analyst 打回的需求（驗收不可測）不得硬推進步驟 2
 
 需求：$ARGUMENTS

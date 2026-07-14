@@ -22,7 +22,7 @@ argument-hint: （無參數）
 ### 3.【TPM 確認點：狀態補登】
 缺 `status:` 的 spec 列成清單問使用者：「這幾份各是什麼狀態（Draft/Reviewed/Locked/Implemented）？」
 - 他逐一回答（或說「照能力地圖抄」）→ 用 Edit 補進各 spec frontmatter
-- **不可自行判定狀態**——尤其不可擅自標 Locked；他不想現在處理就跳過，build 時自然會被閘門擋
+- **不可自行判定狀態**——尤其不可擅自標 Locked；他不想現在處理就跳過，缺 status 的 spec 進 build 會在入口被要求先補登
 
 ### 4. 建 Arena
 - 建 `.claude/.octopus-arena/decisions.md`（表頭：`日期｜spec｜決策｜結論`）

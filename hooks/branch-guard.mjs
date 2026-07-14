@@ -69,9 +69,9 @@ export function evaluate(command, currentBranch) {
       !/--abort\b|--quit\b/.test(seg)
     ) {
       return [
-        "⛔ Octopus branch-guard 擋下 git merge。",
-        "merge 權永遠在 TPM 手上（硬停點二）——請 TPM 自行 merge。",
-        "若 TPM 已明確同意由 Claude 代為執行，請在指令最前面加上 OCTOPUS_TPM_OK=1 再執行（留痕）。",
+        "⛔ Octopus branch-guard 擋下 git merge（merge 需要 TPM 明確同意——驗收停點）。",
+        "TPM 已在對話中同意 → 直接改跑：OCTOPUS_TPM_OK=1 git merge ...（前綴＝同意留痕，不必回頭重問）。",
+        "尚未同意 → 先呈驗收報告取得 TPM 點頭，或由 TPM 自行在終端機 merge（hook 只攔 Claude 的工具呼叫）。",
       ].join("\n");
     }
 

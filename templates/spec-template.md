@@ -1,7 +1,7 @@
 ---
 spec: NNN-short-slug
 title: <能力名稱>
-status: Draft   # Draft → Locked → Implemented（由 command 流轉，TPM 確認才鎖）
+status: Draft   # Draft → Locked → Implemented（由 command 確定性流轉；手動拍板或 build 入口自動鎖定）
 depends_on: []  # 相依的其他 spec
 ---
 

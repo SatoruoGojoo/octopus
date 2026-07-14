@@ -1,6 +1,6 @@
 # Octopus 功能文件
 
-> **版本**：v0.1 Draft
+> **版本**：v0.3 Draft
 > **形式**：Claude Code plugin
 > **本檔定位**：Octopus 的權威設計文件。實作（agents/、commands/）一律從本檔推導；實作與本檔衝突時，回到本檔修訂後再改實作。
 
@@ -184,7 +184,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 | | |
 |---|---|
 | 職責 | merge 前的**認知債對齊**：檢核對象是「TPM 的認知 ↔ 成品現況」——spec↔code 的對齊是 Reviewer 的事，考官在 Reviewer 之後出場，以審查通過的現況為答案依據。依 diff＋spec 出 2~4 題功能理解題（改動後的行為、設計取捨、失效模式），**優先取材 spec 未釘死、Builder 自主決定的點**（那是 TPM 唯一沒在場的決策現場，認知債只長在那裡）；答錯或答不出就講解現況並引 code（file:line）。**教學型，不是閘門** |
-| 觸發 | 僅 build 管線、變更**動到程式碼層面的邏輯**才觸發；純文案/註解/格式/設定調整跳過。quick 不觸發——意圖與變更之間沒有自主距離，且判準已排除高風險，沒有落差可抓。附著在硬停點二，不新增硬停點 |
+| 觸發 | 僅 build 管線、變更**動到程式碼層面的邏輯**才觸發；純文案/註解/格式/設定調整跳過。quick 不觸發——意圖與變更之間沒有自主距離，且判準已排除高風險，沒有落差可抓。附著在驗收停點，不新增停點 |
 | 輸入 | branch diff（唯讀 git 指令）＋對應 spec（如有）＋驗收報告（如有） |
 | 輸出 | 考題（逐題問答，多輪經 SendMessage 往返）＋理解檢核摘要（每題一行判定，附在驗收報告後）。若對齊中 TPM 表示「這個自主決定不是我要的」，如實記入摘要——裁量在 TPM 的驗收停點，不經考官判斷 |
 | 紅線 | **不考檔名、路徑、函式名等實作瑣事——考的是功能理解，不是記憶力**；不論答題結果 merge 權在 TPM，不得建議「不准 merge」；只讀不改；每題答案須有依據（diff/spec/code 推導），不杜撰 |
@@ -212,6 +212,8 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 **建議 A，因為**：<一~兩句>
 **不可逆性**：<可隨時改 / 改要付遷移成本 / 基本不可逆>
 ```
+
+呈報時機分兩種：**拍板點呈報**（預設 spec/main 的 OK 停點、`step` 模式、諮詢情境——當場等 TPM 回答，回 OK＝全採建議）；**事後呈報**（`auto` 模式的鎖定與執行段所有保守預設決策——留痕後集中列在驗收報告開頭的「執行中自動拍板清單」，TPM 於驗收停點以否決權行使拍板）。
 
 ### 4.3 驗收出口：驗收報告（Reviewer）
 
@@ -247,8 +249,8 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 | `/octopus:db` | DB 三方言諮詢 | DBA 直答 |
 | `/octopus:quick` | 小修小補：不啟動管線、不寫 spec | Builder 直做（仍出簡版報告） |
 | `/octopus:spec` | SDD 討論段（可獨立停住） | Analyst → Architect → spec＋tasks 落檔 →【鎖定】 |
-| `/octopus:build <spec>` | SDD 執行段（**全自主**，入口驗 Locked） | 讀 tasks → Builder → Reviewer → P1 自動修（≤3 輪）→【merge】 |
-| `/octopus:main` | spec + build 連跑（鎖定停一次，其後自主） | 上兩段串接，零重複邏輯 |
+| `/octopus:build <spec>` | SDD 執行段（**全自主**，入口 Draft 自動鎖定） | 讀 tasks → Builder → Reviewer → P1 自動修（≤3 輪）→【merge】 |
+| `/octopus:main` | spec + build 連跑（拍板一個 OK 後全自主；加 `auto` 純一條龍） | 上兩段串接，零重複邏輯 |
 | `/octopus:tasks` | 單獨產 tasklist（spec 或需求文字皆可；不實作） | Architect（情境 B）；無 spec 時 Analyst 輕量釐清先行 |
 | `/octopus:debug` | 根因分析 | Debugger |
 | `/octopus:review` | 單獨審查（不限管線產出） | Reviewer |
@@ -256,35 +258,43 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 ### 5.2 SDD 交付管線
 
-設計原則：**討論集中在前段、拍板一次，之後全自主執行**。TPM 的決策工作在鎖定點結束；執行段跑回來的是「驗證過的成品＋驗收報告」，不是一連串確認請求。
+設計原則：**討論集中在前段，拍板一個 OK，之後全自主執行、不中途等人**。TPM 在管線起點本來就在場（Analyst 反問），spec 產出後只需回一個 **OK**（＝決策卡全採建議＋鎖定）就放手；執行段跑回來的是「驗證過的成品＋驗收報告＋執行中自動拍板清單」，不是一連串確認請求。輸入含 `auto` 時連 OK 都省（build 入口自動鎖定＋留痕），純一條龍直達驗收。
 
 ```
-── 討論段（/octopus:spec）─────────────────────────
+── 討論段（/octopus:spec 單獨跑，或 main 前半）──────
 模糊需求
   → Analyst：反問釐清（≤3 問 ×≤2 輪）＋魔鬼代言人挑戰
   → Architect：EARS spec ＋ tasklist ＋（如有取捨）決策卡——一次產齊
   → 落檔 specs/NNN-*/spec.md + tasks.md，標 Draft
-  →【硬停點一：TPM 看完整包拍板】→ command 確定性改標 Locked
+  → 鎖定：
+     · 預設（spec / main）→【拍板 OK 停點：TPM 看完整包，回 OK＝決策卡全採建議＋鎖定】
+       → command 改標 Locked
+     · 輸入含 auto，或直接 /octopus:build 一份 Draft spec → 不停，build 入口自動鎖定＋留痕
 ── 執行段（/octopus:build，全自主）─────────────────
-  → 入口閘門：非 Locked 直接拒絕
+  → 入口閘門：Draft → 未定案決策卡取建議選項留痕 → command 自動改標 Locked 續跑；
+              Implemented → 拒絕（已完工，建議開新 spec）；缺 status → 停，請先補登
   → Builder：照 tasks 在 feature branch 實作＋測試
   → Reviewer：驗收報告
-  → 有 P1？→ 自動退回 Builder 修 → 重審（迴圈，上限 3 輪）
+  → 有 P1？→ 自動退回 Builder 修 → 重審（迴圈，上限 3 輪；未清空→收尾標紅，不中途等人）
   → Examiner：理解檢核（動到程式邏輯才觸發，逐題問答＋講解）
-  →【硬停點二：TPM 驗收 → merge】→ command 改標 Implemented
+  →【唯一硬停點：TPM 驗收 → merge】→ command 改標 Implemented
 ```
 
 **為什麼 spec/build 拆兩段而不是 main 一條龍**：spec 與實作經常不在同一天（等確認、排隊、跨週）。spec 必須是**可暫停、可累積、可回頭對賬的獨立交付物**——只活在對話裡的 spec 不是 SDD，是「動手前有先想」。`/octopus:main` 只是連跑糖衣。
 
-**停點規則**：
-- **硬停點只有兩個**：① spec 鎖定（決定做什麼）② 驗收 merge（決定什麼進主幹）——TPM 權力核心，任何模式都要人類明確回答
-- **執行段例外停點（事件觸發，非排程確認）**：高風險決策（spec 未涵蓋且涉及 migration / 權限認證 / 對外契約 / 不可逆）、P1 三輪修不乾淨、實作中發現 spec 矛盾
-- **step 模式（可選）**：command 輸入含 `step` 時改為逐步確認——給想盯流程的場合；預設是自主模式
-- **理解檢核不是新停點**：Examiner 的問答附著在硬停點二之內（反正 TPM 本來就要停下來驗收），答錯採講解不擋 merge，因此不改變「硬停點只有兩個」的不變量
+**停點規則**（v0.3 起：TPM 判斷集中到 merge 一點）：
+- **硬停點只有一個**：驗收 merge（決定什麼進主幹）——TPM 權力核心，任何模式都要人類明確回答
+- **拍板 OK 停點（預設，可跳過）**：spec/main 呈現完整包（spec 摘要＋決策卡＋tasklist）後等 TPM 一個 **OK**——OK＝決策卡全部採建議選項＋同意鎖定；想改就回話逐項處理。成本極低（TPM 在管線起點本來就在場、剛答完反問），擋掉的是 v0.3 純自動最大的浪費：方向全錯的整輪 build。輸入含 `auto`、或直接 `/octopus:build` 一份 Draft spec 時跳過此停點：入口自動鎖定＋留痕，此時 `Locked` 只代表「**spec 定稿、進入執行、不再漂移**」而非 TPM 看過——拍板權後置到驗收停點以否決權行使（前提：Builder 紅線保證 **branch 上一切可逆**——不 merge、不推主幹、migration 只產檔不執行，不 merge 即否決，代價只是白跑一輪 token）
+- **執行段不中途等人**：原本的三種例外停點改為「保守預設＋留痕＋驗收報告集中呈報」——
+  - 高風險決策（spec 未涵蓋且涉及 migration / 權限認證 / 對外契約 / 不可逆）→ 取保守選項，以決策卡格式記錄，呈報在驗收報告開頭的「執行中自動拍板清單」
+  - P1 三輪修不乾淨 → 直接收尾出報告，如實標紅「修不掉的 P1 與原因」，不建議 merge
+  - 實作中發現 spec 矛盾 → 按最合理解釋標註後繼續，差異寫入報告，不自行竄改 spec
+- **step 模式（可選）**：command 輸入含 `step` 時改為逐步確認，鎖定點與上述三種事件照停——給想盯流程的場合；預設是自主模式
+- **理解檢核不是停點**：Examiner 的問答附著在驗收停點之內（反正 TPM 本來就要停下來驗收），答錯採講解不擋 merge，因此不改變「硬停點只有一個」的不變量
 
 ### 5.3 SDD 整合細節
 
-- spec 狀態 `Draft / Locked / Implemented` 記於 spec 檔 frontmatter；**狀態流轉由 command 確定性寫入**（TPM 說鎖才鎖），不經 agent 判斷
+- spec 狀態 `Draft / Locked / Implemented` 記於 spec 檔 frontmatter；**狀態流轉由 command 確定性寫入**，不經 agent 判斷。鎖定有兩條路：預設由 TPM 在 OK 停點確認（spec/main）；`auto` 模式或直接 build 一份 Draft spec 時由 build 入口**自動鎖定**（未定案決策卡取建議選項、Arena 留痕「auto-locked」）
 - **spec 範本跟著目標 repo 走**：Octopus 內建預設 EARS 範本（`templates/spec-template.md`）；若目標 repo 已有自己的範本（如 `specs/_TEMPLATE.md`），優先用 repo 的——配合既有 SDD 專案慣例，不強加格式
 - `/octopus:quick` 明確**不寫 spec**——防 spec 形式主義；判準：單檔可定位、不碰 schema/契約/權限的修改
 - **完工文件同步（build 收尾，不另設停點）**：merge 後補 spec 的「相關 API」表（spec 兼任業務故事——記「為什麼有這個功能」與「對應哪支 API」），並列出本次變更使哪些既有文件過時的建議更新清單
@@ -302,7 +312,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 ### 6.2 流程閘門
 
-**v0.1 實作方式：閘門寫在 command 的確定性步驟裡**（build 入口先 Read spec frontmatter，非 `Locked` 直接拒絕；Builder agent 自己再驗一次＝雙重檢查；狀態流轉只由 command 在 TPM 明確確認後 Edit）。
+**v0.1 實作方式：閘門寫在 command 的確定性步驟裡**（build 入口先 Read spec frontmatter：`Draft` 自動鎖定後續跑、`Implemented` 拒絕、缺 status 停下要求補登；Builder agent 動工前自驗 `Locked`＝雙重檢查；狀態流轉只由 command Edit）。
 
 **v0.2 程式化 hooks 備援（第一批，已實作）**：plugin 附帶 PreToolUse hooks（`hooks/hooks.json`），防 agent 被說服繞過 prompt 層閘門。挑選標準＝「失守代價最大的兩條紅線」。工程慣例：純 node、零相依、**fail-open**（hook 自身故障一律放行，不卡流程）、判斷邏輯以 `evaluate()` export 可獨立驗證、擋下訊息 zh-TW 並附解法。
 
@@ -317,10 +327,10 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 | Hook | 攔截 | 守的不變量 | 例外（留痕） |
 |---|---|---|---|
-| `hooks/branch-guard.mjs` | PreToolUse(Bash) | **主幹保護**：擋「在 main/master 上 `git commit` / `git push`」「push 到 main/master」「`git merge`（`--abort`/`--quit` 善後除外）」「任何 force push」；同一指令串內 `checkout`/`switch` 換到主幹也會被追蹤 | TPM 明確同意時指示在指令前加 `OCTOPUS_TPM_OK=1 `——例外寫在指令裡＝可稽核 |
+| `hooks/branch-guard.mjs` | PreToolUse(Bash) | **主幹保護**：擋「在 main/master 上 `git commit` / `git push`」「push 到 main/master」「`git merge`（`--abort`/`--quit` 善後除外）」「任何 force push」；同一指令串內 `checkout`/`switch` 換到主幹也會被追蹤 | TPM 明確同意時在指令前加 `OCTOPUS_TPM_OK=1 `——例外寫在指令裡＝可稽核；同意後 Claude 直接前綴重跑，不重複請示 |
 | `hooks/spec-status-guard.mjs` | PreToolUse(Edit\|Write) | **spec 狀態機**：`status` 只能單步順向 `Draft → Locked → Implemented`，禁回退、禁跳關、禁刪除或憑空插入 status 行；新 spec 只能生為 `Draft` | 回退/修復由 TPM 親手改檔（hook 只攔 Claude 的工具呼叫） |
 
-界線：hook 守**確定性不變量**（程式能判定的）；「TPM 拍板才鎖」的時序仍由 command 流程負責——hook 無從得知對話中誰點了頭，這條界線是刻意的，不要試圖用 hook 驗語意。
+界線：hook 守**確定性不變量**（程式能判定的）；鎖定的時序（手動拍板或 build 入口自動鎖定）仍由 command 流程負責——hook 只驗「單步順向」，無從也無需得知這一步是誰確認的，這條界線是刻意的，不要試圖用 hook 驗語意。
 
 **Phase 3 其餘備援（未做）**：
 
@@ -328,7 +338,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 |---|---|
 | SubagentStart | Builder 動工前必有 tasks/TODO 清單 |
 | SubagentStop | Reviewer 報告必含「高風險變更點」段落；Builder 產出必在 feature branch 上 |
-| build 入口 | spec frontmatter 非 `Locked` → 程式直接擋下（現由 command 步驟＋Builder 雙重檢查） |
+| build 入口 | spec frontmatter 為 `Implemented` 或缺 status → 程式直接擋下（現由 command 步驟＋Builder 雙重檢查） |
 
 ### 6.3 寫入隔離：feature branch
 
@@ -363,14 +373,15 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 - 回答涉及實際 schema 時 SHALL 引用 schema/migration 檔，SHALL NOT 憑空假設欄位存在
 
 **Builder**
-- WHEN 輸入 spec 狀態非 Locked，build SHALL 拒絕啟動並說明缺什麼
+- WHEN 輸入 spec 狀態為 Draft，build 入口 SHALL 自動鎖定（未定案決策卡取建議選項＋Arena 留痕）後啟動；WHEN 為 Implemented 或缺 status，SHALL 拒絕並說明（已完工建議開新 spec／請先補登狀態）
+- Builder 動工前 SHALL 自驗 spec 為 Locked（與 command 入口構成雙重檢查）
 - 所有 code 變更 SHALL 發生在 feature branch；SHALL NOT 直接改主幹
 
 **Examiner**
-- WHEN build 變更動到程式碼層面的邏輯，管線 SHALL 於硬停點二前啟動理解檢核；WHEN 變更僅為文案/註解/格式/設定，SHALL 略過；quick 通道 SHALL NOT 觸發理解檢核
+- WHEN build 變更動到程式碼層面的邏輯，管線 SHALL 於驗收停點前啟動理解檢核；WHEN 變更僅為文案/註解/格式/設定，SHALL 略過；quick 通道 SHALL NOT 觸發理解檢核
 - 考題 SHALL 針對功能行為、設計取捨與失效模式，並 SHALL 優先取材 spec 未釘死、Builder 自主決定之處；SHALL NOT 考檔名、路徑、函式名等實作瑣事
 - WHEN 回答錯誤或不完整，Examiner SHALL 講解現況並引 code（file:line），SHALL NOT 阻擋 merge 或建議禁止 merge
-- 理解檢核 SHALL 附著於硬停點二，SHALL NOT 新增硬停點；WHEN TPM 於對齊中表示自主決定不符其意，Examiner SHALL 如實記入摘要，SHALL NOT 自行裁決
+- 理解檢核 SHALL 附著於驗收停點，SHALL NOT 新增停點；WHEN TPM 於對齊中表示自主決定不符其意，Examiner SHALL 如實記入摘要，SHALL NOT 自行裁決
 
 **Reviewer**
 - 驗收報告 SHALL 逐條對應 spec 驗收標準，無遺漏
@@ -381,10 +392,12 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 - WHEN merge 完成，管線 SHALL 補 spec 相關 API 表並列出受影響既有文件的建議更新清單；SHALL NOT 為此新增停點
 
 **自主執行（build 管線預設）**
-- WHILE 自主執行，管線 SHALL NOT 以排程確認打斷 TPM；SHALL 僅於事件觸發時停（高風險決策 / P1 三輪未清 / spec 矛盾）
-- WHEN 遇到 spec 未涵蓋的高風險決策（migration/權限/對外契約/不可逆），管線 SHALL 停下以決策卡請示，SHALL NOT 自動採納
-- WHEN P1 退修達 3 輪仍未清空，管線 SHALL 停下並附「修不掉的 P1 與原因」
-- spec 鎖定與 merge 兩個硬停點 SHALL 於任何模式要求使用者明確回答
+- WHILE 自主執行，管線 SHALL NOT 中途暫停等待 TPM 回答（step 模式除外）；執行中決策 SHALL 以「保守預設＋留痕」處理並於驗收報告開頭集中呈報
+- WHEN 遇到 spec 未涵蓋的高風險決策（migration/權限/對外契約/不可逆），管線 SHALL 取保守選項並以決策卡格式留痕，SHALL NOT 執行任何效果逃出 feature branch 的動作（Builder 紅線不變：migration 只產檔、不推主幹、不 merge）
+- WHEN P1 退修達 3 輪仍未清空，管線 SHALL 收尾出報告並標明「修不掉的 P1 與原因」，SHALL NOT 建議 merge、SHALL NOT 中途空等
+- WHEN 實作中發現 spec 矛盾，管線 SHALL 按最合理解釋標註後繼續並將差異寫入報告，SHALL NOT 竄改 spec
+- 驗收 merge 停點 SHALL 於任何模式要求使用者明確回答；代為 merge SHALL 以 `OCTOPUS_TPM_OK=1 ` 前綴留痕，SHALL NOT 於使用者已明確同意後重複請示
+- WHEN 未指定 auto，鎖定 SHALL 經 TPM 明確確認（回 OK 即視為決策卡全採建議＋鎖定）；WHEN 輸入含 auto 或對 Draft spec 直接執行 build，入口 SHALL 自動鎖定並留痕
 - 自主過程中的所有自動決定 SHALL 留紀錄可回溯
 
 **全體**

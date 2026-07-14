@@ -1,16 +1,14 @@
 ---
-description: 完整 SDD 管線：討論一次（釐清→spec＋tasks→你拍板鎖定）→ 之後全自主執行到驗收報告，你只剩 merge。
-argument-hint: <需求描述>（加 step 可逐步確認）
+description: 完整 SDD 管線：釐清→spec＋tasks 落檔→你回一個 OK（=拍板＋鎖定）→ 全自主執行到驗收報告，你只剩 merge。加 auto 連 OK 都省。
+argument-hint: <需求描述>（加 auto 純一條龍；加 step 逐步確認）
 ---
 
-這是 Octopus 的 **main 管線**＝ `/octopus:spec` 接 `/octopus:build` 連跑，沒有第三套邏輯。整條管線只有**兩個硬停點**：
+這是 Octopus 的 **main 管線**＝ `/octopus:spec` 接 `/octopus:build` 連跑，沒有第三套邏輯。
 
-1. 完整執行 spec.md 的步驟 1~4——釐清與挑戰的往返都集中在這段，最後一次呈現完整包（spec＋決策卡＋tasklist），【硬停點一：拍板鎖定】
-2. 使用者選「鎖定並繼續」→ 以剛產出的 spec 路徑執行 build.md 步驟 0~5：**全自主**（實作→測試→審查→P1 自動修到乾淨），直到【硬停點二：驗收 merge】
-3. 使用者在鎖定點選「先停」→ 正常結束，日後 `/octopus:build` 接續
-
-例外停點（事件觸發，非排程確認）：高風險決策、P1 三輪修不乾淨、spec 矛盾——見 build.md「何時停」。
-使用者輸入含 `step` 時，兩段都改逐步模式。
+1. 執行 spec.md 步驟 1~4——Analyst 釐清反問照常（它發生在起點、使用者還在場）；Architect 產完整包（spec＋決策卡＋tasklist，落檔 `Draft`）；呈現後等使用者**一個 OK**（＝決策卡全採建議選項＋鎖定；有意見就回話逐項改）
+2. 鎖定後以該 spec 路徑執行 build.md 步驟 0~6：**全自主**（實作→測試→審查→P1 自動修，執行中不等人），直到【唯一硬停點：驗收 merge】
+3. 輸入含 `auto` → 跳過 spec.md 步驟 3~4 的拍板停點，直接進 build（入口自動鎖定＋留痕），純一條龍直達驗收報告
+4. 輸入含 `step` → 兩段都改逐步確認模式
 
 兩段行為規則一律以 `${CLAUDE_PLUGIN_ROOT}/commands/spec.md` 與 `${CLAUDE_PLUGIN_ROOT}/commands/build.md` 為準（先 Read 這兩檔再開始）。
 

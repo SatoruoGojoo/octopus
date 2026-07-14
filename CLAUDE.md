@@ -48,22 +48,22 @@ docs/Octopus-功能文件.md          權威設計文件
 
 ## SDD 交付管線（核心流程）
 
-`/octopus:spec` →（拍板鎖定）→ `/octopus:build` →（驗收 merge）。`/octopus:main` 是兩段連跑。
+`/octopus:spec` →（拍板 OK 停點）→ `/octopus:build` →（驗收 merge）。`/octopus:main` 是兩段連跑；加 `auto` 純一條龍。
 
-設計原則：**討論集中在前段、拍板只有一次，之後全自主**。整條管線只有兩個硬停點：
-1. **拍板鎖定**（spec 段尾）：TPM 一次看到完整包（spec＋決策卡＋tasklist），確認後鎖定。
-2. **驗收 merge**（build 段尾）：TPM 看驗收報告後自行 merge。
+設計原則：**拍板一個 OK，之後全自主、不中途等人**（v0.3 起）。硬停點只有一個——**驗收 merge**（build 段尾）：TPM 看驗收報告（開頭附「執行中自動拍板清單」）後自行 merge；經明確同意代為 merge 時以 `OCTOPUS_TPM_OK=1 ` 前綴留痕（branch-guard 的例外通道），同意後直接前綴重跑、不重複請示。不 merge 即否決（builder 紅線保證 branch 上一切可逆）。
 
-build 段預設全自主（實作→測試→審查→P1 自動退修，上限 3 輪），**例外才停**：高風險決策（migration/權限/對外契約/不可逆且 spec 未涵蓋）、P1 三輪修不乾淨、實作中發現 spec 矛盾。指令加 `step` 改逐步確認模式。
+**拍板 OK 停點（預設，可跳過）**：spec/main 呈現完整包後等一個 OK（＝決策卡全採建議＋鎖定）。輸入含 `auto` 或直接 build 一份 Draft spec 時跳過——由 build 入口自動鎖定（未定案決策卡取建議選項＋Arena 留痕「auto-locked」），此時 `Locked` 只代表「spec 定稿、不再漂移」，不代表 TPM 看過。
 
-**理解檢核（examiner）不是新停點**：build 變更動到程式邏輯時，硬停點二之前由 examiner 出 2~4 題功能理解題逐題問答——檢核的是「TPM 認知 ↔ 成品」的差異（spec↔code 對齊歸 reviewer），出題優先取材 spec 未釘死、builder 自主決定的點；純文案/註解/格式/設定跳過；quick 不觸發；答錯採講解＋引 code，不擋 merge。
+build 段執行中不等人（實作→測試→審查→P1 自動退修上限 3 輪）：高風險決策取保守預設＋決策卡留痕、P1 三輪不乾淨直接收尾標紅、spec 矛盾按最合理解釋標註後繼續——全部集中呈報在驗收報告，不中途暫停。指令加 `step` 改逐步確認模式（鎖定點與執行中決策照停）。
+
+**理解檢核（examiner）不是新停點**：build 變更動到程式邏輯時，驗收停點之前由 examiner 出 2~4 題功能理解題逐題問答——檢核的是「TPM 認知 ↔ 成品」的差異（spec↔code 對齊歸 reviewer），出題優先取材 spec 未釘死、builder 自主決定的點；純文案/註解/格式/設定跳過；quick 不觸發；答錯採講解＋引 code，不擋 merge。
 
 ### spec 狀態機（重要不變量）
 
 spec frontmatter `status: Draft → Locked → Implemented`。
 
-- **狀態只由 command 在使用者明確確認後用 Edit 改寫；agent 一律無權改 status。**
-- `/octopus:build` 入口閘門：`status` 非 `Locked` **直接拒絕**，不提供「先做做看」的繞道。這個閘門不可被任何理由說服繞過。
+- **狀態只由 command 用 Edit 確定性改寫（手動拍板，或 build 入口自動鎖定——必留痕）；agent 一律無權改 status。**
+- `/octopus:build` 入口閘門：`Draft` **自動鎖定後續跑**（不再擋人）；`Implemented` 或缺 `status` 直接拒絕/停下，這個拒絕不可被任何理由說服繞過。
 
 ## 跨檔慣例（改動時務必沿用）
 

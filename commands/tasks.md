@@ -7,7 +7,7 @@ argument-hint: <spec 路徑/編號，或一段需求描述>
 
 ## 情境 A：輸入是 spec（路徑或編號，Glob `specs/<編號>-*/spec.md` 可找到）
 
-1. Read spec。狀態不限（Draft 也可以拆，方便估量）；**非 Locked 時在輸出頂部標註**：「⚠ 本 tasklist 基於 <status> spec，鎖定前可能變動；/octopus:build 仍要求 Locked」
+1. Read spec。狀態不限（Draft 也可以拆，方便估量）；**非 Locked 時在輸出頂部標註**：「⚠ 本 tasklist 基於 <status> spec，鎖定前可能變動；/octopus:build 入口會將 Draft 自動鎖定後執行」
 2. 用 Agent 工具啟動 **architect**（情境 B）展開 tasks（相依順序＋每條對應 AC＋涉及層面）
 3. 完整轉述給使用者
 

@@ -47,18 +47,18 @@ claude --plugin-dir C:/Users/MX/Project/octopus
 
 ### SDD 交付管線
 
-設計原則：**討論集中在前段、拍板一次，之後全自主**。整條管線只有兩個硬停點——
+設計原則：**拍板一個 OK，之後全自主、不中途等人**。硬停點只有一個（驗收 merge）；spec 產出後你只需回一個 **OK**（＝決策卡全採建議＋鎖定），加 `auto` 連 OK 都省——
 
 | 指令 | 用途 |
 |---|---|
-| `/octopus:spec <需求>` | 討論段：釐清＋挑戰 → **EARS spec＋tasklist 一次落檔**（Draft）→ 你看完整包拍板 →【硬停點一】鎖定。**可以停在這**，改天再 build |
-| `/octopus:build <spec>` | 執行段（**全自主**）：入口驗狀態（非 Locked 直接拒絕）→ 照 tasks 在 feature branch 實作＋測試 → 審查 → **P1 自動退修到乾淨（上限 3 輪）** → 帶驗收報告回來 →【硬停點二】你 merge → Implemented |
-| `/octopus:main <需求>` | 兩段連跑：鎖定停一次，之後自主跑到驗收報告 |
+| `/octopus:spec <需求>` | 討論段：釐清＋挑戰 → **EARS spec＋tasklist 一次落檔**（Draft）→ 你看完整包回 OK →【拍板停點】鎖定。**可以停在這**，改天再 build |
+| `/octopus:build <spec>` | 執行段（**全自主**）：入口 Draft **自動鎖定**（未定案決策卡取建議選項＋留痕；Implemented 拒絕）→ 照 tasks 在 feature branch 實作＋測試 → 審查 → **P1 自動退修（上限 3 輪）** → 帶驗收報告回來 →【唯一硬停點】你 merge → Implemented |
+| `/octopus:main <需求>` | 兩段連跑：一個 OK 拍板後全自主直達驗收報告；加 `auto` 純一條龍（入口自動鎖定，連 OK 都省） |
 | `/octopus:tasks <spec 或需求>` | 單獨產 tasklist：給 spec 就展開；給需求文字就先輕量釐清再拆（標明非正式）。不實作 |
 
-執行段**例外才停**（事件觸發）：高風險決策（migration/權限/對外契約/不可逆且 spec 未涵蓋）、P1 三輪修不乾淨、實作中發現 spec 矛盾。想逐步盯流程？指令加 `step`。
+執行段**不中途等人**：高風險決策取保守預設＋決策卡留痕、P1 三輪修不乾淨直接收尾標紅、spec 矛盾標註後繼續——全部集中呈報在驗收報告開頭的「執行中自動拍板清單」，你不 merge 即否決（branch 上一切可逆）。想逐步盯流程或親自拍板？指令加 `step`。
 
-spec 狀態（Draft/Locked/Implemented）記在 spec 檔 frontmatter，只由 command 在你明確確認後改寫——agent 無權動狀態。
+spec 狀態（Draft/Locked/Implemented）記在 spec 檔 frontmatter，只由 command 確定性改寫（手動拍板或 build 入口自動鎖定，自動鎖定必留痕）——agent 無權動狀態。
 
 ## 使用須知
 
