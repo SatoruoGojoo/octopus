@@ -63,7 +63,7 @@ spec 狀態（Draft/Locked/Implemented）記在 spec 檔 frontmatter，只由 co
 ## 使用須知
 
 - **merge 權在你手上**：所有實作都在 feature branch，Octopus 不 commit 主幹、不 merge。
-- **程式化守門（v0.2 起，不只靠自律）**：plugin 內建兩個 PreToolUse hook——`branch-guard`（擋主幹 commit/push、`git merge`、force push）與 `spec-status-guard`（spec `status` 只准單步順向 Draft→Locked→Implemented，禁回退/跳關）。你明確同意的例外＝請 Claude 在指令前加 `OCTOPUS_TPM_OK=1 `（寫在指令裡＝留痕可稽核）；spec 狀態修復請自己動手改檔。裝好後可用 `/hooks` 確認已註冊。
+- **程式化守門（v0.2 起，不只靠自律；v0.4 起只在管線執行中生效）**：plugin 內建兩個 PreToolUse hook——`branch-guard`（擋主幹 commit/push、`git merge`、force push）與 `spec-status-guard`（spec `status` 只准單步順向 Draft→Locked→Implemented，禁回退/跳關）。**守門跟著管線走**：管線 command 起跑寫入 `.claude/.octopus-arena/.run`、收尾刪除，hook 只在 marker 有效（TTL 4 小時）時攔截——日常叫 Claude 做的 git 操作零干預。執行中的例外同意＝請 Claude 在指令前加 `OCTOPUS_TPM_OK=1 `（寫在指令裡＝留痕可稽核）；spec 狀態修復請自己動手改檔。裝好後可用 `/hooks` 確認已註冊。
 - **誠實原則**：所有回答標註來源等級（權威檔案 / code 推導 / 文件示意 / 查無）；查無不杜撰。
 - **Arena 知識庫**：spec/build 管線會在目標 repo 的 `.claude/.octopus-arena/decisions.md` 追記拍板決策，**預設請加進該 repo 的 `.gitignore`**（每人私有）；想升級成團隊共享再移除該行。
 - 本插件不連線任何資料庫、不需要任何憑證。
@@ -77,6 +77,8 @@ spec 狀態（Draft/Locked/Implemented）記在 spec 檔 frontmatter，只由 co
 
 ## 版本
 
+v0.4.0 — 守門跟著管線走：hook 改由 run-marker（TTL 4h）啟動，日常工作零干預；規劃輕問＋epic 模式（Architect 自主判斷單 spec 或拆 epic＋roadmap，逐 epic 交付、各自驗收 merge）。
+v0.3.0 — 停點模型 v0.3：拍板收斂成一個 OK，執行段不中途等人；build 入口 Draft 自動鎖定。
 v0.2.0 — 程式化 hooks 第一批上線：主幹保護（branch-guard）＋ spec 狀態機保護（spec-status-guard），兩條最貴的紅線從 prompt 紀律升級為程式閘門。
 v0.1.0 — 諮詢（ask/db）＋輕通道（quick）＋ SDD 交付管線（spec/build/main）＋ debug/review 全部可用。
 尚未實作：其餘 hooks 備援（SubagentStart/Stop 檢核、build 入口程式擋）、session memory 與 `/octopus:recall`、模型分級。

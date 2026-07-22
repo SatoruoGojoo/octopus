@@ -8,12 +8,13 @@
 // fail-open：hook 自身錯誤一律放行（exit 0），不卡流程。
 
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const MAINLINES = ["main", "master"];
 const STDIN_TIMEOUT_MS = 5000;
+const RUN_MARKER_TTL_MS = 4 * 60 * 60 * 1000;
 
 // evaluate() 逐段檢查的第一道門就是這個 pattern：不含 git 的段落一律略過。
 // 因此整條指令都不含 git 時，currentBranch 不可能被讀到 —— 提前放行，省下查分支的子行程。
@@ -117,15 +118,20 @@ export function evaluate(command, currentBranch) {
 }
 
 /**
- * 守門跟著 octopus 走（設計文件 §6.2）：從 cwd 往上找 .claude/.octopus-arena/
- * （/octopus:init 建立）。找不到＝非 octopus 專案，守門不啟動。
- * 判定不了（讀檔錯誤等）回傳 false，fail-open 放行。
+ * 守門跟著管線走（設計文件 §6.2）：從 cwd 往上找 .claude/.octopus-arena/.run
+ * （管線 command 起跑寫入 ISO 時間戳、收尾刪除）。存在且未逾 TTL 才啟動守門——
+ * 日常工作（無管線在跑）hook 零干預；TTL 是 crash 殘留 marker 的兜底。
+ * 判定不了（讀檔錯誤、時間戳無法判讀等）回傳 false，fail-open 放行。
  */
-function inOctopusProject(startDir) {
+export function pipelineActive(startDir, now = Date.now()) {
   try {
     let dir = resolve(startDir || process.cwd());
     while (true) {
-      if (existsSync(join(dir, ".claude", ".octopus-arena"))) return true;
+      const marker = join(dir, ".claude", ".octopus-arena", ".run");
+      if (existsSync(marker)) {
+        const ts = Date.parse(readFileSync(marker, "utf8").trim());
+        return Number.isFinite(ts) && now - ts < RUN_MARKER_TTL_MS;
+      }
       const parent = dirname(dir);
       if (parent === dir) return false;
       dir = parent;
@@ -165,7 +171,7 @@ async function main() {
 
     const command = payload.tool_input?.command || "";
     if (!MENTIONS_GIT.test(command)) process.exit(0);
-    if (!inOctopusProject(payload.cwd)) process.exit(0); // 守門跟著 octopus 走
+    if (!pipelineActive(payload.cwd)) process.exit(0); // 守門跟著管線走
 
     let branch = null;
     try {

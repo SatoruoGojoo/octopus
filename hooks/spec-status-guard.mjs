@@ -13,6 +13,7 @@ import { pathToFileURL } from "node:url";
 
 const ORDER = { Draft: 0, Locked: 1, Implemented: 2 };
 const STDIN_TIMEOUT_MS = 5000;
+const RUN_MARKER_TTL_MS = 4 * 60 * 60 * 1000;
 const LOOSE_STATUS_RE = /^status:[ \t]*(Draft|Locked|Implemented)\b/m;
 
 /** 從完整檔案內容抽 frontmatter 內的 status（檔案不是 spec 回傳 null） */
@@ -105,15 +106,20 @@ function defaultReadFile(p) {
 }
 
 /**
- * 守門跟著 octopus 走（設計文件 §6.2）：從 cwd 往上找 .claude/.octopus-arena/
- * （/octopus:init 建立）。找不到＝非 octopus 專案，守門不啟動。
- * 判定不了（讀檔錯誤等）回傳 false，fail-open 放行。
+ * 守門跟著管線走（設計文件 §6.2）：從 cwd 往上找 .claude/.octopus-arena/.run
+ * （管線 command 起跑寫入 ISO 時間戳、收尾刪除）。存在且未逾 TTL 才啟動守門——
+ * 日常工作（無管線在跑）hook 零干預；TTL 是 crash 殘留 marker 的兜底。
+ * 判定不了（讀檔錯誤、時間戳無法判讀等）回傳 false，fail-open 放行。
  */
-function inOctopusProject(startDir) {
+export function pipelineActive(startDir, now = Date.now()) {
   try {
     let dir = resolve(startDir || process.cwd());
     while (true) {
-      if (existsSync(join(dir, ".claude", ".octopus-arena"))) return true;
+      const marker = join(dir, ".claude", ".octopus-arena", ".run");
+      if (existsSync(marker)) {
+        const ts = Date.parse(readFileSync(marker, "utf8").trim());
+        return Number.isFinite(ts) && now - ts < RUN_MARKER_TTL_MS;
+      }
       const parent = dirname(dir);
       if (parent === dir) return false;
       dir = parent;
@@ -152,7 +158,7 @@ async function main() {
     if (payload.tool_name !== "Edit" && payload.tool_name !== "Write") {
       process.exit(0);
     }
-    if (!inOctopusProject(payload.cwd)) process.exit(0); // 守門跟著 octopus 走
+    if (!pipelineActive(payload.cwd)) process.exit(0); // 守門跟著管線走
     const message = evaluate(payload.tool_name, payload.tool_input || {});
     if (message) {
       process.stderr.write(message);

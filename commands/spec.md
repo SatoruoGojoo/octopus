@@ -11,33 +11,42 @@ argument-hint: <需求描述（可貼文字/截圖）>
 
 ## 步驟
 
+### 0. 起跑 run-marker（確定性動作）
+把當下 ISO 時間戳寫進目標 repo 的 `.claude/.octopus-arena/.run`（目錄不存在先建立）——守門 hook 只在 marker 有效期間生效（守門跟著管線走，設計文件 §6.2）。本管線**收尾時必刪 marker**（步驟 4 之後，或使用者保持 Draft 結束時）。
+
 ### 1. 需求釐清
 用 Agent 工具啟動 **analyst**，把需求原文（含圖片）完整轉給它。
 - 它若反問（≤3 問 × ≤2 輪），把問題轉給使用者，答案轉回給它（用 SendMessage 延續同一個 analyst，不要重開）
 - 它會做魔鬼代言人挑戰；挑戰結果一併呈現給使用者
 - 產出：結構化需求分析
 
+釐清完成後補一句**規劃輕問**（非停點，`/octopus:main auto` 不問、逕交 Architect）：「規劃方式交給 Architect 判斷（預設），還是你要指定？（tasks＝單 spec 平鋪／epic＝拆多份 spec 逐一交付）」。不答或答「交給你」即走預設；拍板停點仍可改。
+
 ### 2. 起草 spec＋tasklist
 用 Agent 工具啟動 **architect**（情境 A），轉給它：
 - Analyst 的結構化需求分析全文
+- 規劃輕問的結果（TPM 指定或「交 Architect 判斷」）
 - 內建範本路徑：`${CLAUDE_PLUGIN_ROOT}/templates/spec-template.md`（它會優先找目標 repo 自己的範本）
 
-產出：`specs/NNN-<slug>/spec.md`（`status: Draft`）＋ `specs/NNN-<slug>/tasks.md` ＋ 決策卡清單（如有）。
+產出（單 spec 模式）：`specs/NNN-<slug>/spec.md`（`status: Draft`）＋ `specs/NNN-<slug>/tasks.md` ＋ 決策卡清單（如有）。
+產出（epic 模式）：多份 `specs/NNN-*/spec.md`＋`tasks.md`（各 `Draft`）＋ roadmap（記各 epic 路徑/順序/相依，**不帶 status frontmatter**）＋ 拆分判斷理由。
 
 ### 3.【拍板 OK 停點】（`/octopus:main auto` 才跳過本步與步驟 4）
 向使用者一次呈現完整包：
-- spec 路徑與摘要（目標 / In-Out / 驗收標準條數）
+- spec 路徑與摘要（目標 / In-Out / 驗收標準條數）；epic 模式加 roadmap 摘要與拆分判斷理由
 - 所有待拍板決策卡
 - tasklist（相依順序）
 
-請他拍板：回「**OK**」＝所有決策卡採建議選項＋同意鎖定，一次完成；有個別意見就逐項處理。結論（含 OK 時採用的建議選項）用 Edit 寫進 spec 的「已拍板決策」表。
+請他拍板：回「**OK**」＝所有決策卡採建議選項＋同意鎖定（含組織方式），一次完成；有個別意見（含改組織方式）就逐項處理。結論（含 OK 時採用的建議選項）用 Edit 寫進 spec 的「已拍板決策」表。
 
 ### 4. 鎖定（確定性動作，使用者明確說鎖才執行）
-- 用 Edit 把 frontmatter `status: Draft` 改為 `status: Locked`
+- 用 Edit 把 frontmatter `status: Draft` 改為 `status: Locked`（epic 模式：所有 epic spec 一併鎖定；roadmap 不是 spec、無狀態可改）
 - 拍板決策追記目標 repo 的 `.claude/.octopus-arena/decisions.md`（日期｜spec 編號｜決策｜結論）。首次建立該目錄時，提醒使用者把 `.claude/.octopus-arena/` 加入該 repo 的 `.gitignore`
-- 告知使用者：`/octopus:build specs/NNN-*/spec.md` 會**自主執行到驗收完成**（實作→測試→審查→修到乾淨），他只需要等驗收報告與 merge
+- 告知使用者：`/octopus:build specs/NNN-*/spec.md`（epic 模式給 roadmap 路徑）會**自主執行到驗收完成**（實作→測試→審查→修到乾淨），他只需要等驗收報告與 merge
 
 使用者不鎖（還要想/要先問別人）→ 保持 Draft，正常結束。
+
+無論鎖定或保持 Draft，結束前**刪除 `.claude/.octopus-arena/.run`**（確定性動作）。
 
 ## 紅線
 - 狀態流轉只由 command 的確定性步驟執行（本管線的步驟 4，或 build 入口的自動鎖定），agent 無權改 status

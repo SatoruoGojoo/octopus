@@ -1,6 +1,6 @@
 ---
 description: SDD 後半段（全自主）：入口 Draft 自動鎖定 → 照 tasks 實作＋測試 → 審查 → P1 自動退修（≤3 輪）→ 帶驗收報告回來，你只剩 merge。中途不停下來等人。
-argument-hint: <spec 路徑或編號>（加 step 可逐步確認）
+argument-hint: <spec 路徑或編號，或 roadmap 路徑（逐 epic 執行）>（加 step 可逐步確認）
 ---
 
 這是 Octopus 的 **build 管線**（SDD 後半段）。你（主對話）擔任 Core 編排。
@@ -12,6 +12,10 @@ argument-hint: <spec 路徑或編號>（加 step 可逐步確認）
 ## 步驟
 
 ### 0. 入口閘門（確定性檢查，先做）
+先寫 run-marker：把當下 ISO 時間戳寫進目標 repo 的 `.claude/.octopus-arena/.run`（目錄不存在先建立）——守門 hook 只在 marker 有效期間生效。本管線於步驟 5 呈報告前刪除。
+
+**給的是 roadmap**（epic 模式）→ Read roadmap，依相依順序對每個 epic 的 spec 執行本檔全部步驟（0~6）：每個 epic 各自完整走一輪、各自有驗收 merge 硬停點；**前一個 epic 經 TPM merge 後才啟動下一個**（起跑時重寫 marker），不 merge 即中止後續 epic。
+
 Read 指定的 spec 檔（給編號就先 Glob `specs/<編號>-*/spec.md`）：
 - 找不到 → 停，列出 specs/ 下現有的 spec 供確認
 - `status: Draft` → **自動鎖定，不請示**：spec 內若有未定案的決策卡，取建議選項用 Edit 寫進「已拍板決策」表並標註「auto」；用 Edit 把 `status: Draft` 改為 `status: Locked`；追記 `.claude/.octopus-arena/decisions.md`（日期｜spec 編號｜auto-locked｜取用的建議選項）。step 模式則停下請 TPM 拍板後才鎖
@@ -38,12 +42,14 @@ Read 同目錄 `tasks.md`（/octopus:spec 已連 spec 一起產出）。
 - 取得理解檢核摘要，與驗收報告一併呈現
 
 ### 5.【唯一硬停點：驗收 merge】
+先**刪除 `.claude/.octopus-arena/.run`**（確定性動作）——執行段結束，守門隨管線收尾解除，之後 TPM 同意的 merge 不再被 hook 攔。
+
 依序完整呈現：
 1. **執行中自動拍板清單**（入口 auto-lock＋過程中所有保守預設決策，用決策卡格式；沒有就寫「無」）
 2. 最終驗收報告（不刪減「高風險變更點」段落）
 3. 理解檢核摘要（如有）
 
-使用者驗收通過 → 他自行 merge，或**經明確同意後代為執行**。代為 merge 時指令一律加前綴 `OCTOPUS_TPM_OK=1 `（例：`OCTOPUS_TPM_OK=1 git merge --no-ff feat/...`）——這是 branch-guard 主幹保護的留痕例外，專為「TPM 已點頭」設計；未經明確同意不得使用。忘了前綴被 hook 擋下時，補上前綴重跑即可，**不要回頭再問一次使用者**。不滿意 → branch 不 merge 即否決，可帶修訂意見重跑。
+使用者驗收通過 → 他自行 merge，或**經明確同意後代為執行**（marker 已清，直接 merge 即可）。若仍被 branch-guard 攔下（罕見：step 模式執行中、或 marker 殘留），加前綴 `OCTOPUS_TPM_OK=1 ` 重跑（例：`OCTOPUS_TPM_OK=1 git merge --no-ff feat/...`）——前綴＝同意留痕，**不要回頭再問一次使用者**；未經明確同意不得使用此前綴。不滿意 → branch 不 merge 即否決，可帶修訂意見重跑。
 
 ### 6. 收尾（merge 完成後）
 - 用 Edit 把 spec frontmatter 改為 `status: Implemented`

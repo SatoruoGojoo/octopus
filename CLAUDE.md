@@ -21,7 +21,7 @@ Octopus 是一個 **Claude Code plugin**（不是應用程式、沒有 build / t
 .claude-plugin/marketplace.json  marketplace 條目（source: "."）
 commands/*.md                    slash command：主對話讀完後依步驟編排 agent
 agents/*.md                      sub-agent persona：frontmatter 宣告 name + tools，body 是行為規格
-hooks/hooks.json                 程式化守門註冊（PreToolUse；只在有 .claude/.octopus-arena/ 的專案生效，subagent 也攔）
+hooks/hooks.json                 程式化守門註冊（PreToolUse；守門跟著管線走——只在 .octopus-arena/.run marker 有效（TTL 4h）時生效，subagent 也攔）
 hooks/*.mjs                      hook 實作——慣例：純 node 零相依、fail-open、判斷邏輯 export evaluate() 可獨立驗證、訊息 zh-TW 附解法（見設計文件 §6.2）
 templates/spec-template.md       內建 EARS spec 範本（目標 repo 有自己的就讓位）
 docs/Octopus-功能文件.md          權威設計文件
