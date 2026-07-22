@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// spec-status-guard.mjs — Octopus spec 狀態機保護（PreToolUse / Edit|Write）
+// spec-status-guard.mjs — Octopus change 狀態機保護（PreToolUse / Edit|Write）
 //
-// 守的不變量（設計文件 §5.2 / §6.2）：spec frontmatter 的 status 只能單步順向
-//   Draft → Locked → Implemented；禁回退、禁跳關、禁刪除或憑空插入 status 行；
-//   新 spec 只能生為 Draft。
+// 守的不變量（設計文件 §5.2 / §6.2，v0.5 OpenSpec 換血後）：
+//   change 中繼資料檔 changes/<name>/.openspec.yaml 的 octopus.status 只能單步順向
+//   Draft → Locked → Implemented；禁回退、禁跳關、禁從既有檔移除；
+//   新 change 只能生為 Draft。
+// 補登例外：檔案原本沒有 octopus.status（init 補登）→ 放行插入，不限值（TPM 確認過）。
 // 例外：回退／修復由 TPM 親手改檔（hook 只攔 Claude 的工具呼叫，攔不到人）。
 // fail-open：hook 自身錯誤一律放行（exit 0），不卡流程。
 
@@ -14,16 +16,28 @@ import { pathToFileURL } from "node:url";
 const ORDER = { Draft: 0, Locked: 1, Implemented: 2 };
 const STDIN_TIMEOUT_MS = 5000;
 const RUN_MARKER_TTL_MS = 4 * 60 * 60 * 1000;
-const LOOSE_STATUS_RE = /^status:[ \t]*(Draft|Locked|Implemented)\b/m;
+const TARGET_FILE_RE = /[\\/]\.openspec\.ya?ml$/i;
+const LOOSE_STATUS_RE = /(?:^|\n)[ \t]*status:[ \t]*(Draft|Locked|Implemented)\b/;
 
-/** 從完整檔案內容抽 frontmatter 內的 status（檔案不是 spec 回傳 null） */
+/**
+ * 從完整檔案內容抽 octopus: 區塊底下的 status（找不到回傳 null）。
+ * 零相依的行掃描：定位頂層 `octopus:` 行，往下只看縮排行，撞到下一個頂層 key 停。
+ */
 export function statusFromFile(content) {
-  if (typeof content !== "string" || !content.startsWith("---")) return null;
-  const end = content.indexOf("\n---", 3);
-  if (end === -1) return null;
-  const fm = content.slice(0, end + 4);
-  const m = fm.match(LOOSE_STATUS_RE);
-  return m ? m[1] : null;
+  if (typeof content !== "string") return null;
+  const lines = content.split(/\r?\n/);
+  let inOctopus = false;
+  for (const line of lines) {
+    if (/^octopus:[ \t]*(#.*)?$/.test(line)) {
+      inOctopus = true;
+      continue;
+    }
+    if (!inOctopus) continue;
+    if (/^\S/.test(line)) break; // 下一個頂層 key，octopus 區塊結束
+    const m = line.match(/^[ \t]+status:[ \t]*(Draft|Locked|Implemented)\b/);
+    if (m) return m[1];
+  }
+  return null;
 }
 
 /** 從字串片段（old_string / new_string）抽 status（片段沒碰 status 行回傳 null） */
@@ -38,8 +52,8 @@ function checkTransition(from, to) {
   if (ORDER[to] === ORDER[from] + 1) return null; // 單步順向 OK（拍板時序由 command 流程把關）
   return [
     `⛔ Octopus spec-status-guard 擋下狀態變更 ${from} → ${to}。`,
-    "spec 狀態機只允許單步順向：Draft → Locked → Implemented（設計文件 §5.2）。",
-    "回退或修復請 TPM 親手改檔——hook 只攔 Claude 的工具呼叫。",
+    "change 狀態機只允許單步順向：Draft → Locked → Implemented（設計文件 §5.2）。",
+    "回退或修復請 TPM 親手改 .openspec.yaml——hook 只攔 Claude 的工具呼叫。",
   ].join("\n");
 }
 
@@ -52,7 +66,7 @@ function checkTransition(from, to) {
  */
 export function evaluate(toolName, toolInput, readFile = defaultReadFile) {
   const filePath = toolInput?.file_path;
-  if (!filePath || !/\.md$/i.test(filePath)) return null;
+  if (!filePath || !TARGET_FILE_RE.test(filePath)) return null;
 
   const existing = readFile(filePath);
   const fileStatus = statusFromFile(existing ?? "");
@@ -60,27 +74,27 @@ export function evaluate(toolName, toolInput, readFile = defaultReadFile) {
   if (toolName === "Write") {
     const newStatus = statusFromFile(toolInput.content ?? "");
     if (existing == null) {
-      // 新建檔案：只有帶 spec status 的才管
+      // 新建 change：只有帶 octopus.status 的才管
       if (newStatus && newStatus !== "Draft") {
         return [
-          `⛔ Octopus spec-status-guard 擋下：新 spec 不得直接以 ${newStatus} 建立。`,
-          "spec 一律生為 Draft，經 TPM 拍板後由 command 流轉（Draft → Locked → Implemented）。",
+          `⛔ Octopus spec-status-guard 擋下：新 change 不得直接以 ${newStatus} 建立。`,
+          "change 一律生為 Draft，經 TPM 拍板後由 command 流轉（Draft → Locked → Implemented）。",
         ].join("\n");
       }
       return null;
     }
-    if (fileStatus == null) return null; // 既有檔不是 spec，不管
+    if (fileStatus == null) return null; // 既有檔還沒登記 octopus.status（init 補登），不管
     if (newStatus == null) {
       return [
-        "⛔ Octopus spec-status-guard 擋下：整檔覆寫移除了 spec 的 status frontmatter。",
-        "status 行不得刪除；如需改 spec 內容請保留 frontmatter。",
+        "⛔ Octopus spec-status-guard 擋下：整檔覆寫移除了 change 的 octopus.status。",
+        "octopus.status 不得從既有 .openspec.yaml 移除；如需改其他中繼資料請保留該欄位。",
       ].join("\n");
     }
     return checkTransition(fileStatus, newStatus);
   }
 
   if (toolName === "Edit") {
-    if (fileStatus == null) return null; // 目標不是 spec，不管
+    if (fileStatus == null) return null; // 檔案還沒有 octopus.status（init 補登插入），不管
     const oldTouch = statusFromFragment(toolInput.old_string);
     const newTouch = statusFromFragment(toolInput.new_string);
     if (oldTouch == null && newTouch == null) return null; // 沒動 status 行
@@ -88,7 +102,7 @@ export function evaluate(toolName, toolInput, readFile = defaultReadFile) {
       return checkTransition(oldTouch, newTouch);
     }
     return [
-      "⛔ Octopus spec-status-guard 擋下：這個編輯會刪除或憑空插入 spec 的 status 行。",
+      "⛔ Octopus spec-status-guard 擋下：這個編輯會刪除或重複插入 change 的 octopus.status。",
       "status 只能單步順向流轉（Draft → Locked → Implemented），不得移除或重複。",
     ].join("\n");
   }
