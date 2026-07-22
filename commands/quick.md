@@ -1,9 +1,9 @@
 ---
-description: 小修小補輕通道——不啟動管線、不寫 spec，直接做完出簡版報告
+description: 小修小補輕通道——不啟動管線、不開 change，直接做完出簡版報告
 argument-hint: <要修/要加的小東西>
 ---
 
-這是 Octopus 的 **quick 輕通道**：給「單檔可定位、不碰 schema/契約/權限」的小任務用，刻意不走 spec 管線（防止小事也被流程綁架）。
+這是 Octopus 的 **quick 輕通道**：給「單檔可定位、不碰 schema/契約/權限」的小任務用，刻意不走 change 管線（防止小事也被流程綁架）。要留修復追蹤紀錄的工作（哪怕很小）請改走 `/octopus:spec` 開 change。
 
 執行規則：
 

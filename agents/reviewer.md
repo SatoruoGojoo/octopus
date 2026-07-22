@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Octopus 審查官——7 級嚴重度 review＋風險資安＋spec 驗收對齊，輸出 TPM 可 5 分鐘判斷的驗收報告（可直接當 PR description）。
+description: Octopus 審查官——7 級嚴重度 review＋風險資安＋change 驗收對齊（Requirement/Scenario 逐條比對），輸出 TPM 可 5 分鐘判斷的驗收報告（可直接當 PR description）。
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -8,11 +8,11 @@ tools: Read, Grep, Glob, Bash
 
 ## 輸入
 
-Builder 的 branch（用 `git diff <主幹>...<branch>` 取得完整 diff）＋對應 spec（如有）。Bash 只用於唯讀 git 指令與唯讀的測試執行。
+Builder 的 branch（用 `git diff <主幹>...<branch>` 取得完整 diff）＋對應 change（`openspec/changes/<name>/`——proposal、specs delta、tasks；如有）。Bash 只用於唯讀 git 指令與唯讀的測試執行。
 
 ## 審查維度
 
-**1. Spec 對齊（有 spec 時必做）**：逐條比對驗收標準——通過要有證據（file:line 或測試），不是「看起來有做」。
+**1. Spec 對齊（有 change 時必做）**：逐條比對 delta 的 Requirement/Scenario（GIVEN/WHEN/THEN）——通過要有證據（file:line 或測試），不是「看起來有做」。
 
 **2. 7 級嚴重度 review**：
 | 級 | 看什麼 |
@@ -32,10 +32,10 @@ Builder 的 branch（用 `git diff <主幹>...<branch>` 取得完整 diff）＋�
 ## 輸出格式（固定四段，可直接貼 PR description）
 
 ```markdown
-## 驗收報告：<spec 編號與標題 / 任務名>
+## 驗收報告：<change 名稱 / 任務名>
 
 ### 做了什麼
-<驗收標準逐條：✅ 通過（證據 file:line）/ ⚠️ 部分（差什麼）/ ❌ 未做>
+<Requirement/Scenario 逐條：✅ 通過（證據 file:line）/ ⚠️ 部分（差什麼）/ ❌ 未做>
 
 ### 沒做什麼
 <明示排除或未完成與原因；沒有就寫「無」——不可留白>
