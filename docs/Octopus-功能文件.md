@@ -37,13 +37,13 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 本設計經多次收斂，記錄如下以免重蹈：
 
-| 版本 | 定位 | 出場原因 |
+| 版本 | 定位 | 退場原因 |
 |---|---|---|
 | v0 | PM/FE/BE 多角色協作中樞（13~17 agent） | PM/FE 是不存在的使用者——服務的角色根本沒有人 |
 | v0.x | 唯讀諮詢 → 完整 SDD 引擎 → 個人全棧+UI/UX 設計官（12 agent） | 範圍反覆膨脹；最終認清真實需求是**優化個人後端工作流** |
 | **v1（本檔）** | **個人後端工作流，7 agent 精實編制** | — |
 
-出場方案的設計細節存檔於附錄（§10），未來若擴編（多人/全棧）可取用。
+退場方案的設計細節存檔於附錄（§10），未來若擴編（多人/全棧）可取用。
 
 ---
 
@@ -326,11 +326,11 @@ Browser 驗證為 opt-in（§5.2）：有執行時，操作結果與截圖附於
 
 ### 5.3 SDD 整合細節（OpenSpec 換血，v0.5）
 
-- **檔案格式全面採用 OpenSpec**（Fission-AI/OpenSpec，v1.x）：`openspec/specs/<domain>/spec.md` 是「系統現況」的活文件（純 markdown，無 frontmatter）；每筆工作——新功能、bug 修復、資料修補——都是 `openspec/changes/<name>/` 一筆 change（proposal.md＋specs delta＋design.md（如需）＋tasks.md）；結案 archive 時 delta 合回主 spec（ADDED 附加／MODIFIED 整段取代／REMOVED 刪除），整夾移入 `changes/archive/YYYY-MM-DD-<name>/`。自有格式（`specs/NNN-*`＋frontmatter status）出場（§10）
+- **檔案格式全面採用 OpenSpec**（Fission-AI/OpenSpec，v1.x）：`openspec/specs/<domain>/spec.md` 是「系統現況」的活文件（純 markdown，無 frontmatter）；每筆工作——新功能、bug 修復、資料修補——都是 `openspec/changes/<name>/` 一筆 change（proposal.md＋specs delta＋design.md（如需）＋tasks.md）；結案 archive 時 delta 合回主 spec（ADDED 附加／MODIFIED 整段取代／REMOVED 刪除），整夾移入 `changes/archive/YYYY-MM-DD-<name>/`。自有格式（`specs/NNN-*`＋frontmatter status）退場（§10）
 - **Octopus 狀態機掛在 change 上**：`changes/<name>/.openspec.yaml`（OpenSpec 官方未規範內容的中繼資料檔）寫入 `octopus.status: Draft / Locked / Implemented`；**狀態流轉仍由 command 確定性寫入**，agent 一律無權改。Draft＝提案中、Locked＝拍板後執行中、Implemented＝已 merge；archive 後整夾移入 archive/ 即終態。鎖定兩條路不變：TPM 在 OK 停點確認，或 `auto`／直接 build 時入口自動鎖定（Arena 留痕「auto-locked」）
 - **`openspec` CLI 是前置依賴**：validate / archive 等確定性動作交給 CLI（code 能答的不用模型）；init 與 build 入口檢查 CLI，缺則停下請使用者安裝（附官方安裝指引），**不自行模擬 CLI 行為**
 - **與 `/opsx:*` 共存的立場**：`openspec init` 會在目標 repo 裝 OpenSpec 自己的 AI 工作流指令。查詢類（status/list/show/view）隨意用；**會動檔案的工作流（propose/apply/archive）建議走 `/octopus:*`**——feature branch 紀律、拍板停點、狀態機、守門 hook 只在 Octopus 管線內有保障，混用會造成狀態漂移（該筆 change 沒有 Locked/Implemented 紀錄）
-- **行為規格句式跟 OpenSpec 官方格式走**：`### Requirement:`（SHALL/MUST）＋`#### Scenario:`（GIVEN/WHEN/THEN），每條 Requirement 至少一個可測 Scenario——EARS「行為必可測」的原則不變，句式讓位給 `openspec validate` 認得的結構；內建範本 `templates/spec-template.md` 出場。proposal 保留「目標與動機」脈絡（change 兼任業務故事）
+- **行為規格句式跟 OpenSpec 官方格式走**：`### Requirement:`（SHALL/MUST）＋`#### Scenario:`（GIVEN/WHEN/THEN），每條 Requirement 至少一個可測 Scenario——EARS「行為必可測」的原則不變，句式讓位給 `openspec validate` 認得的結構；內建範本 `templates/spec-template.md` 退場。proposal 保留「目標與動機」脈絡（change 兼任業務故事）
 - **roadmap 位置**：`openspec/roadmaps/<需求名>.md`（自訂資料夾，不是 change、不受 CLI 與狀態機管；`openspec validate` 對此的容忍度待實測，見 §9）
 - `/octopus:quick` 明確**不開 change**——防形式主義；判準：單檔可定位、不碰 schema/契約/權限的修改。要留修復追蹤紀錄的工作請開 change（哪怕很小）
 - **tasks 驗證方式欄位**：tasks.md 每條 task 標 `test`（預設，自動測試）或 `browser`（瀏覽器操作＋截圖）；browser 為 **opt-in**——拍板 OK 停點時 TPM 勾選才生效，執行由 Core 親自操作（Claude Code 的瀏覽器整合僅主對話可用，subagent 不可用——工具限制，非設計選擇）
@@ -501,13 +501,13 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 
 ---
 
-## 10. 附錄：出場方案存檔
+## 10. 附錄：退場方案存檔
 
 以下方案在設計過程中被砍，存檔備查；若未來情境改變（多人協作、接全棧、給 PM 用）可取回：
 
-- **多角色協作中樞（v0）**：PM/FE/BE 各有入口；Feasibility 可行性卡片（六欄位）、Triage 前後端分流 agent、FE task 欄位規格、MSW mock 產出。出場原因：服務不存在的使用者
-- **全棧雙 Builder（v0.x）**：+UI 前端專家（GD-Data 的前端鏡像）、Builder 拆 FE/BE、task 端別欄位確定性路由。出場原因：定位收斂為後端專用
-- **UI/UX 設計官（v0.x）**：實作前出 design tokens/佈局，實作後「截圖→挑刺→修正」精緻度審查迴圈（上限 2~3 輪）。出場原因：同上
-- **Guardian 治理 agent（v0.x）**：spec 狀態流轉的專職裁決者。出場原因：狀態流轉是確定性動作，hooks + command 就能做，不用 agent
-- **自有 spec 格式（`specs/NNN-*`＋frontmatter status，v0.1~v0.3）**：含內建 EARS 範本 `templates/spec-template.md`、「範本跟著目標 repo 走」讓位規則。出場原因：v0.5 全面換血為 OpenSpec 格式——活文件＋change 生命週期原生支援「修復狀態追蹤」（code 已修、資料待補、未 archive＝留開），狀態機平移到 change 的 `.openspec.yaml`
+- **多角色協作中樞（v0）**：PM/FE/BE 各有入口；Feasibility 可行性卡片（六欄位）、Triage 前後端分流 agent、FE task 欄位規格、MSW mock 產出。退場原因：服務不存在的使用者
+- **全棧雙 Builder（v0.x）**：+UI 前端專家（GD-Data 的前端鏡像）、Builder 拆 FE/BE、task 端別欄位確定性路由。退場原因：定位收斂為後端專用
+- **UI/UX 設計官（v0.x）**：實作前出 design tokens/佈局，實作後「截圖→挑刺→修正」精緻度審查迴圈（上限 2~3 輪）。退場原因：同上
+- **Guardian 治理 agent（v0.x）**：spec 狀態流轉的專職裁決者。退場原因：狀態流轉是確定性動作，hooks + command 就能做，不用 agent
+- **自有 spec 格式（`specs/NNN-*`＋frontmatter status，v0.1~v0.3）**：含內建 EARS 範本 `templates/spec-template.md`、「範本跟著目標 repo 走」讓位規則。退場原因：v0.5 全面換血為 OpenSpec 格式——活文件＋change 生命週期原生支援「修復狀態追蹤」（code 已修、資料待補、未 archive＝留開），狀態機平移到 change 的 `.openspec.yaml`
 - **擴編路線（若部署到團隊共用）**：意圖漂移檢查官（比對客戶原話＝糾紛留痕）、合約對齊驗收官（範圍對齊＝請款驗收）、UAT 測試官（客戶驗收測試）獨立成編——專案公司情境約 11~13 agent。原則：每多一條「對外部利害關係人的問責邊界」，加回一個守邊界的 agent
