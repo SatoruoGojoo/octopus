@@ -1,11 +1,11 @@
 ---
-description: SDD 後半段（全自主）：入口 Draft 自動鎖定 → Builder 回合制照 tasks 實作（每條 task 隨行回報）→ 審查 → P1 自動退修（≤3 輪）→ browser 驗證（opt-in）→ 帶驗收報告回來，你只剩 merge 與 archive。中途不停下來等人。
+description: SDD 後半段（全自主）：入口 Draft 自動鎖定 → Builder 逐 task 實作（每條 task 隨行回報）→ 審查 → P1 自動退修（≤3 輪）→ browser 驗證（opt-in）→ 帶驗收報告回來，你只剩 merge 與 archive。中途不停下來等人。
 argument-hint: <change 名稱/路徑，或 roadmap 路徑（逐 change 執行）>（加 step 可逐步確認）
 ---
 
 這是 Octopus 的 **build 管線**（SDD 後半段）。你（主對話）擔任 Core 編排。
 
-設計原則：**全自主、不中途等人，但看得到進度**。TPM 的拍板權後置到驗收停點、以否決權形式行使——branch 上一切可逆（不 merge 即否決），所以執行中一律「保守預設＋留痕」跑到底；同時 Builder 每完成一條 task 你就即時轉呈一則 task 回報（單向，不等回覆），TPM 隨行看得懂每條 task 對應的 code——這承接了理解債的邊界，跑完不需要抽考。
+設計原則：**全自主、不中途等人，但看得到進度**。TPM 的拍板權後置到驗收停點、以否決權形式行使——branch 上一切可逆（不 merge 即否決），所以執行中一律「保守預設＋留痕」跑到底；同時 Builder 每完成一條 task 你就即時轉呈一則 task 回報（單向，不等回覆），TPM 隨行看得懂每條 task 對應的 code——這守住「理解 vs 盲簽」邊界，跑完不必回頭補看。
 
 使用者輸入含 `step` 時改為逐步模式：每條 task、每個步驟完成後停下呈現再續，執行中決策也改為當場以決策卡請示。
 
@@ -29,17 +29,19 @@ argument-hint: <change 名稱/路徑，或 roadmap 路徑（逐 change 執行）
 Read 同目錄 `tasks.md`（/octopus:spec 已連 change 一起產出）。
 若缺檔（手建的 change）→ 啟動 **architect**（情境 B）補產，**不停等確認**，繼續往下。
 
-用主對話的 todo 清單登記全部 tasks——這是 TPM 的進度條，每回合勾銷。
+用主對話的 todo 清單登記全部 tasks——這是 TPM 的進度條，每條回報後勾銷。
 
-### 2. 實作（Builder 回合制）
+### 2. 實作（Builder 逐 task 派工）
+這是「**進度可見契約**」的當前實作（設計文件 §5.2）：逐條派工讓每次 agent 返回帶一條回報，Core 才能即時轉呈——因為 Claude Code 的 subagent 輸出在它返回前你看不到。Builder 本身是純執行層（不管派工節奏），逐條是**你（Core）**的編排選擇。
+
 用 Agent 工具啟動 **builder**：給 change 路徑＋完整 tasks＋**指定第一條未完成 task**。它自驗狀態、建 feature branch（`feat/<change-name>`）、只做那一條、勾 tasks.md、返回 task 回報。
 
-每回合收到回報後：
+每次收到回報後：
 1. **即時轉呈使用者**（task 回報原文——做了什麼／code 導讀／自主決定／測試），**單向呈現，不停等回覆**；todo 清單勾銷該條
-2. 用 SendMessage 對**同一個** builder 指派下一條 task（不要重開新 agent——context 連貫是回合制的前提）
+2. 用 SendMessage 對**同一個** builder 指派下一條 task（不要重開新 agent——context 連貫是逐條派工的前提）
 3. 全部做完 → 取得最終變更摘要
 
-step 模式：每回合停下等確認再派下一條。
+step 模式：每條 task 停下等確認再派下一條。
 
 ### 3. 審查與自動修復迴圈（Reviewer ⇄ Builder）
 用 Agent 工具啟動 **reviewer**（branch、主幹、change 路徑）取得驗收報告。

@@ -166,12 +166,12 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 | | |
 |---|---|
-| 職責 | 從確認過的 change（或 quick 任務）實作 code＋測試——**回合制，一回合一條 task（見下）** |
+| 職責 | 從確認過的 change（或 quick 任務）實作 code＋測試；每完成一條 task 出一則 task 回報（**純執行層**，見下） |
 | 輸入 | Locked change + tasks（main/build 管線），或直接的小修描述（quick） |
-| 輸出 | feature branch 上的 commits + 測試 + 每回合的 task 回報 + 最終變更摘要 |
+| 輸出 | feature branch 上的 commits + 測試 + 每條 task 的 task 回報 + 最終變更摘要 |
 | 紅線 | **一律在 feature branch 工作，絕不直接改主幹**（TPM 合併權的執行機制）；測試跟著實作走，不可宣稱完成而無測試（除非 change 明示免測並有理由） |
 
-**回合制（v0.5）**：同一個 builder 分回合驅動——每回合完成**一條 task** 即返回一則 **task 回報**（做了什麼一~兩句／關鍵 code 導讀 `file:line`，改了哪裡、為什麼這樣改／自主決定——spec 未釘死、自己拿主意的點），Core 轉呈 TPM（**單向呈現，不停等回覆**）並勾銷進度，再以 SendMessage 續派下一條——同一個 agent、context 連貫，裁示與進度可視性上移到 Core。這同時是理解債的承接機制：原 Examiner 出題的素材（Builder 自主決定的點）改為即時攤在回報裡，TPM 隨行看懂每條 task 對應的 code，取代 merge 前抽考。
+**純執行層（v0.5 修訂）**：Builder 的邊界是**實作紀律**與「不碰主幹」（§2.1），**不含派工節奏**。它實作被指派的 task，每完成一條就回一則 **task 回報**（做了什麼一~兩句／關鍵 code 導讀 `file:line`——改哪裡、為什麼／自主決定——spec 未釘死、自己拿主意的點），全部做完回最終變更摘要。「逐 task 回報」是誠實原則（§6.4）的延伸——讓工作可讀、讓 TPM 隨行看懂每條 task 對應的 code（守住「理解 vs 盲簽」邊界、不盲簽 merge），**不論誰在編排、怎麼派工都成立**。至於「一次派一條、逐條轉呈、SendMessage 續派」——那是**編排層**（Core）在當前工具限制下讓進度可見的實作手段（見 §5.2「自主段的兩個契約」），不是 Builder 的身份；harness 就緒後 Builder 一個字都不用改。
 
 ### 3.6 Reviewer（審查官）
 
@@ -253,7 +253,7 @@ Browser 驗證為 opt-in（§5.2）：有執行時，操作結果與截圖附於
 | `/octopus:db` | DB 三方言諮詢 | DBA 直答 |
 | `/octopus:quick` | 小修小補：不啟動管線、不開 change | Builder 直做（仍出簡版報告） |
 | `/octopus:spec` | SDD 討論段（可獨立停住） | Analyst → Architect → change 落檔（proposal＋delta＋tasks）→【鎖定】 |
-| `/octopus:build <change\|roadmap>` | SDD 執行段（**全自主**，入口 Draft 自動鎖定；收 roadmap 則逐 change 執行） | 讀 tasks → Builder 回合制（隨行回報）→ Reviewer → P1 自動修（≤3 輪）→ browser 驗證（opt-in）→【merge】→ archive |
+| `/octopus:build <change\|roadmap>` | SDD 執行段（**全自主**，入口 Draft 自動鎖定；收 roadmap 則逐 change 執行） | 讀 tasks → Builder 逐 task 隨行回報（進度可見契約，§5.2）→ Reviewer → P1 自動修（≤3 輪）→ browser 驗證（opt-in）→【merge】→ archive |
 | `/octopus:main` | spec + build 連跑（拍板一個 OK 後全自主；加 `auto` 純一條龍） | 上兩段串接，零重複邏輯 |
 | `/octopus:tasks` | 單獨產 tasklist（change 或需求文字皆可；不實作） | Architect（情境 B）；無 change 時 Analyst 輕量釐清先行 |
 | `/octopus:debug` | 根因分析 | Debugger |
@@ -281,7 +281,7 @@ Browser 驗證為 opt-in（§5.2）：有執行時，操作結果與截圖附於
   → 入口閘門：openspec CLI 缺 → 停，請使用者安裝；
               Draft → 未定案決策卡取建議選項留痕 → command 自動改標 Locked 續跑；
               Implemented / 已歸檔 → 拒絕（已完工，建議開新 change）；缺 octopus.status → 停，請先補登
-  → Builder 回合制：同一個 builder，每回合一條 task——實作＋測試 → 返回 task 回報
+  → Builder 逐 task 派工（進度可見契約實作，§5.2）：同一個 builder，一條 task——實作＋測試 → 返回 task 回報
     （做了什麼／code 導讀 file:line／自主決定）→ Core 轉呈 TPM ＋ todo 勾銷進度（不停等回覆）
     → SendMessage 續派下一條，直到 tasks 做完
   → Reviewer：驗收報告
@@ -299,6 +299,17 @@ Browser 驗證為 opt-in（§5.2）：有執行時，操作結果與截圖附於
 
 **為什麼 spec/build 拆兩段而不是 main 一條龍**：change 的討論與實作經常不在同一天（等確認、排隊、跨週）。change 必須是**可暫停、可累積、可回頭對賬的獨立交付物**——只活在對話裡的規格不是 SDD，是「動手前有先想」。`/octopus:main` 只是連跑糖衣。
 
+**自主段的兩個契約——契約 vs 實作（v0.5 修訂）**：自主執行段沒人逐步盯著，靠兩個契約維持 §4 的 TPM 介面（決策呈現、驗收出口）不失真。**契約是穩定介面、實作是可換手段**——分開寫，未來 harness 才有明確接手目標，agent 也不必揹著編排邏輯（規則漂移風險見 §9）：
+
+- **進度可見契約**：TPM 能漸進看到 build 進度，不是等整段跑完才一次看到成品。
+  - *當前限制*：Claude Code 的 subagent 輸出在它返回前 Core 看不到，要即時拿到每條 task 的回報，只能把 Builder 的執行切成回合、讓每次返回帶一條。
+  - *當前實作＝回合制*：Core 逐條派 task 給同一個 builder（SendMessage 續派、context 連貫），每回合即時轉呈回報＋勾銷 todo、不停等回覆。代價：每回合一次 agent 往返＋context 重載，且「Core 記得續派、別讓 builder 跑過頭」靠 prompt 撐（漂移風險見 §9）。
+  - *未來實作＝harness*：工作佇列／串流機制機械化捕捉逐 task 回報，免去往返；屆時 Builder（§3.5）與本契約都不必改。
+- **決策留存契約**：自主段每個自動決定（入口 auto-lock、保守預設）都可回溯，TPM 在驗收停點一次審完。
+  - *當前實作*：Core 把自動決定即時寫進 Arena `decisions.md`（跨 session 知識面），並在驗收報告開頭集中呈現「執行中自動拍板清單」（當次稽核面）；兩者分工見 §6.1。
+
+「回合制」「SendMessage 續派」是**實作細節**，描述位置在 build.md 編排步驟，不在 Builder persona——這條界線與「Command＝編排層、Agent＝執行層」（§3.0）一致。
+
 **停點規則**（v0.3 起：TPM 判斷集中到 merge 一點；v0.5 語彙隨 OpenSpec 換血更新）：
 - **硬停點只有一個**：驗收 merge（決定什麼進主幹）——TPM 權力核心，任何模式都要人類明確回答
 - **拍板 OK 停點（預設，可跳過）**：spec/main 呈現完整包（proposal 摘要＋決策卡＋tasklist＋browser 驗證勾選）後等 TPM 一個 **OK**——OK＝決策卡全部採建議選項＋同意鎖定；想改就回話逐項處理。成本極低（TPM 在管線起點本來就在場、剛答完反問），擋掉的是純自動最大的浪費：方向全錯的整輪 build。輸入含 `auto`、或直接 `/octopus:build` 一筆 Draft change 時跳過此停點：入口自動鎖定＋留痕，此時 `Locked` 只代表「**規格定稿、進入執行、不再漂移**」而非 TPM 看過——拍板權後置到驗收停點以否決權行使（前提：Builder 紅線保證 **branch 上一切可逆**——不 merge、不推主幹、migration 只產檔不執行，不 merge 即否決，代價只是白跑一輪 token）
@@ -306,7 +317,7 @@ Browser 驗證為 opt-in（§5.2）：有執行時，操作結果與截圖附於
   - 高風險決策（spec 未涵蓋且涉及 migration / 權限認證 / 對外契約 / 不可逆）→ 取保守選項，以決策卡格式記錄，呈報在驗收報告開頭的「執行中自動拍板清單」
   - P1 三輪修不乾淨 → 直接收尾出報告，如實標紅「修不掉的 P1 與原因」，不建議 merge
   - 實作中發現 spec 矛盾 → 按最合理解釋標註後繼續，差異寫入報告，不自行竄改 spec delta
-- **隨行回報不是停點（v0.5）**：Builder 每回合的 task 回報單向呈現、不停等回覆——TPM 隨時可以人為打斷，但管線不主動停。它同時承接原 Examiner 的理解債邊界：spec 未釘死、Builder 自主決定的點即時攤開在回報裡
+- **隨行回報不是停點（v0.5）**：逐 task 回報（進度可見契約的呈現面）單向呈現、不停等回覆——TPM 隨時可以人為打斷，但管線不主動停。它同時守住「理解 vs 盲簽」邊界：spec 未釘死、Builder 自主決定的點即時攤開在回報裡，TPM 隨行看懂就不必事後補看
 - **Browser 驗證不是停點（v0.5）**：Core 自主執行拍板時勾選的項目並附證據，結果只進驗收報告
 - **step 模式（可選）**：command 輸入含 `step` 時改為逐步確認，鎖定點與上述三種事件照停——給想盯流程的場合；預設是自主模式
 - **規劃輕問不是停點**：Analyst 釐清後、Architect 動筆前問一句組織方式（交 Architect 判斷／指定單 change／指定 epic），不答或答「交給你」即走預設。它發生在 TPM 本來就在場的討論段，不違反「執行段不中途等人」；`auto` 模式不問
@@ -334,6 +345,7 @@ Browser 驗證為 opt-in（§5.2）：有執行時，操作結果與截圖附於
 
 - 位置：目標 repo 的 `.claude/.octopus-arena/`，分片 markdown（`architecture.md` / `conventions.md` / `decisions.md` / `glossary.md`）
 - 原則：**只沉澱「拍板過的決策與 Open Questions」，不沉澱可從 code 推導的事實**（那些每次即時掃描，永不過時）
+- **知識面 vs 稽核面的分工（v0.5 澄清）**：`decisions.md` 是**跨 session 知識**（哪些決策拍過、為什麼），供日後回想；「這一輪 build 是否誠實執行」的**稽核**由驗收報告的「執行中自動拍板清單」（§4.3 決策呈現）與 feature branch commit 史承擔。自主段把保守預設寫進 `decisions.md`，是因為它們是「值得日後回想的決策」，不是要把 Arena 當管線的執行軌跡日誌。run-marker（`.run`，§6.2）是**編排狀態**、不是知識，本就與 `decisions.md` 分開存放
 - **預設加入目標 repo 的 `.gitignore`**：同事在同一公司 repo 各自用 Octopus 時，Arena 寫進 git 會默默變成共用狀態，違反「各自使用」的部署前提。想升級成團隊共享知識庫時，拿掉 gitignore 那行即可（屆時需要有人負責清理髒資料）
 
 ### 6.2 流程閘門
@@ -407,11 +419,11 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 - WHEN 使用者指定 DB，回答 SHALL 針對該 DB；WHEN 未指定，SHALL 並列三方言差異
 - 回答涉及實際 schema 時 SHALL 引用 schema/migration 檔，SHALL NOT 憑空假設欄位存在
 
-**Builder（回合制）**
-- WHEN change 狀態為 Draft，build 入口 SHALL 自動鎖定（未定案決策卡取建議選項＋Arena 留痕）後啟動；WHEN 為 Implemented、已歸檔或缺 octopus.status，SHALL 拒絕或停下並說明
+**Builder（純執行層）**
 - Builder 動工前 SHALL 自驗 change 為 Locked（與 command 入口構成雙重檢查）
-- 每回合 SHALL 只做一條 task，完成即返回 task 回報（做了什麼／code 導讀 file:line／自主決定）；Core SHALL 即時轉呈 TPM 並勾銷進度，SHALL NOT 停等 TPM 回覆
-- 所有 code 變更 SHALL 發生在 feature branch；SHALL NOT 直接改主幹
+- Builder SHALL 每完成一條 task 返回一則 task 回報（做了什麼／code 導讀 file:line／自主決定）；此為工作可讀，SHALL NOT 因無人催而省略
+- 所有 code 變更 SHALL 發生在 feature branch；SHALL NOT 直接改主幹、merge、force push 或改 octopus.status
+- Builder 職責 SHALL NOT 含派工節奏——一次派一條或整批、如何轉呈 TPM 由編排層（Core）決定（見「自主執行」）
 
 **Scout（overview）**
 - WHEN 使用者要求專案鳥瞰，Scout SHALL 即時生成敘事型 overview（分層/職責/依賴/關鍵流程走讀）並標註來源；SHALL NOT 將 overview 落檔沉澱
@@ -434,6 +446,7 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 
 **自主執行（build 管線預設）**
 - WHILE 自主執行，管線 SHALL NOT 中途暫停等待 TPM 回答（step 模式除外）；執行中決策 SHALL 以「保守預設＋留痕」處理並於驗收報告開頭集中呈報
+- 進度可見契約：自主段 SHALL 讓 TPM 漸進看到進度；當前實作為 Core 逐條派 task 給同一 builder、每條回報即時轉呈（回合制），SHALL NOT 停等回覆——此為實作手段，harness 就緒後可替換而契約不變（§5.2）
 - WHEN 遇到 spec 未涵蓋的高風險決策（migration/權限/對外契約/不可逆），管線 SHALL 取保守選項並以決策卡格式留痕，SHALL NOT 執行任何效果逃出 feature branch 的動作（Builder 紅線不變：migration 只產檔、不推主幹、不 merge）
 - WHEN P1 退修達 3 輪仍未清空，管線 SHALL 收尾出報告並標明「修不掉的 P1 與原因」，SHALL NOT 建議 merge、SHALL NOT 中途空等
 - WHEN 實作中發現 spec 矛盾，管線 SHALL 按最合理解釋標註後繼續並將差異寫入報告，SHALL NOT 竄改 spec
@@ -485,7 +498,7 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 - roadmap 放 `openspec/roadmaps/` 的 CLI 容忍度（`openspec validate --all` 會不會抱怨非標準資料夾）——實作時實測
 - `/opsx:*` 與 `/octopus:*` 共存的實際邊界（查詢類混用兩週後回頭看有沒有狀態漂移）
 - v0.x legacy openspec 專案的接管細節（要不要代跑 `openspec update` 升級）——實作時對照官方 migration guide
-- Builder 回合制的 context 雪球（同一個 builder 跨回合累積）：可視性優先先這樣；若 token 成本回頭咬人，可切換為 per-task 短命 builder（回報格式不變，犧牲 context 連貫換成本）
+- 進度可見契約的實作選擇（§5.2）：回合制讓同一個 builder 跨回合累積 context（雪球＋每回合往返成本）。可視性優先先這樣；成本咬人時可換 per-task 短命 builder（犧牲 context 連貫）或等 harness 串流承接——三者都不動契約與 Builder persona
 
 ---
 

@@ -6,7 +6,7 @@ argument-hint: <需求描述>（加 auto 純一條龍；加 step 逐步確認）
 這是 Octopus 的 **main 管線**＝ `/octopus:spec` 接 `/octopus:build` 連跑，沒有第三套邏輯。
 
 1. 執行 spec.md 步驟 0~4——Analyst 釐清反問與規劃輕問照常（都發生在起點、使用者還在場）；Architect 產完整包（change：proposal＋delta＋tasks＋決策卡，落檔 `Draft`；判斷拆 epic 時另產 roadmap）；呈現後等使用者**一個 OK**（＝決策卡全採建議選項＋接受 browser 驗證建議＋鎖定；有意見就回話逐項改）
-2. 鎖定後以該 change 名稱（epic 模式為 roadmap 路徑）執行 build.md 步驟 0~6：**全自主**（Builder 回合制實作＋隨行回報→審查→P1 自動修→browser 驗證（有勾才做），執行中不等人），直到【唯一硬停點：驗收 merge】
+2. 鎖定後以該 change 名稱（epic 模式為 roadmap 路徑）執行 build.md 步驟 0~6：**全自主**（Builder 逐 task 實作＋隨行回報→審查→P1 自動修→browser 驗證（有勾才做），執行中不等人），直到【唯一硬停點：驗收 merge】
 3. 輸入含 `auto` → 跳過 spec.md 的規劃輕問（逕交 Architect 判斷）與步驟 3~4 的拍板停點，直接進 build（入口自動鎖定＋留痕），純一條龍直達驗收報告
 4. 輸入含 `step` → 兩段都改逐步確認模式
 

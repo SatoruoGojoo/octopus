@@ -54,7 +54,7 @@ claude --plugin-dir C:/Users/MX/Project/octopus
 | 指令 | 用途 |
 |---|---|
 | `/octopus:spec <需求>` | 討論段：釐清＋挑戰 → **OpenSpec change 一次落檔**（proposal＋spec delta＋tasks，Draft）→ 你看完整包回 OK →【拍板停點】鎖定。**可以停在這**，改天再 build |
-| `/octopus:build <change>` | 執行段（**全自主**）：入口 Draft **自動鎖定**（未定案決策卡取建議選項＋留痕；Implemented/已歸檔拒絕）→ Builder **回合制**照 tasks 實作＋測試（**每條 task 即時回報**：做了什麼／code 導讀／自主決定）→ 審查 → **P1 自動退修（上限 3 輪）** → browser 驗證（拍板時有勾才做）→ 帶驗收報告回來 →【唯一硬停點】你 merge → tasks 全完成則（經你點頭）`openspec archive` 結案 |
+| `/octopus:build <change>` | 執行段（**全自主**）：入口 Draft **自動鎖定**（未定案決策卡取建議選項＋留痕；Implemented/已歸檔拒絕）→ Builder **逐 task** 照 tasks 實作＋測試（**每條 task 即時回報**：做了什麼／code 導讀／自主決定）→ 審查 → **P1 自動退修（上限 3 輪）** → browser 驗證（拍板時有勾才做）→ 帶驗收報告回來 →【唯一硬停點】你 merge → tasks 全完成則（經你點頭）`openspec archive` 結案 |
 | `/octopus:main <需求>` | 兩段連跑：一個 OK 拍板後全自主直達驗收報告；加 `auto` 純一條龍（入口自動鎖定，連 OK 都省） |
 | `/octopus:tasks <change 或需求>` | 單獨產 tasklist：給 change 就展開；給需求文字就先輕量釐清再拆（標明非正式）。不實作 |
 
