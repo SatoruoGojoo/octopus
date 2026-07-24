@@ -80,7 +80,7 @@ change 狀態（Draft/Locked/Implemented）記在該 change 的 `.openspec.yaml`
 
 ## 版本
 
-v0.5.0 — OpenSpec 換血：spec 格式全面改用 OpenSpec（活文件＋change 生命週期，狀態機遷至 `.openspec.yaml`，merge ≠ archive 原生支援修復追蹤）；Builder 回合制隨行回報（每 task 附 code 導讀，Examiner 出場）；`/octopus:overview` 專案鳥瞰；browser 驗證 opt-in（tasks 標 browser、拍板勾選、Core 親自操作＋截圖）。
+v0.5.0 — OpenSpec 換血：spec 格式全面改用 OpenSpec（活文件＋change 生命週期，狀態機遷至 `.openspec.yaml`，merge ≠ archive 原生支援修復追蹤）；Builder 逐 task 隨行回報（每 task 附 code 導讀）；`/octopus:overview` 專案鳥瞰；browser 驗證 opt-in（tasks 標 browser、拍板勾選、Core 親自操作＋截圖）。
 v0.4.0 — 守門跟著管線走：hook 改由 run-marker（TTL 4h）啟動，日常工作零干預；規劃輕問＋epic 模式（Architect 自主判斷單 spec 或拆 epic＋roadmap，逐 epic 交付、各自驗收 merge）。
 v0.3.0 — 停點模型 v0.3：拍板收斂成一個 OK，執行段不中途等人；build 入口 Draft 自動鎖定。
 v0.2.0 — 程式化 hooks 第一批上線：主幹保護（branch-guard）＋ spec 狀態機保護（spec-status-guard），兩條最貴的紅線從 prompt 紀律升級為程式閘門。

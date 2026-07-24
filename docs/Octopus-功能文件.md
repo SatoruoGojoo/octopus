@@ -10,7 +10,7 @@
 
 ### 1.1 命名由來
 
-**一顆頭，多隻腳。** 頭是你——TPM（Technical Project Manager）；腳是各管一個領域的專家 agent，聽頭的指揮。腳的數量不追「章魚＝八」的字面，跟問責邊界走（§2）——v0.5 起為七隻（Examiner 出場，見 §10）。
+**一顆頭，多隻腳。** 頭是你——TPM（Technical Project Manager）；腳是各管一個領域的專家 agent，聽頭的指揮。腳的數量不追「章魚＝八」的字面，跟問責邊界走（§2）——v0.5 起為七隻。
 
 ### 1.2 Octopus 是什麼
 
@@ -41,7 +41,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 |---|---|---|
 | v0 | PM/FE/BE 多角色協作中樞（13~17 agent） | PM/FE 是不存在的使用者——服務的角色根本沒有人 |
 | v0.x | 唯讀諮詢 → 完整 SDD 引擎 → 個人全棧+UI/UX 設計官（12 agent） | 範圍反覆膨脹；最終認清真實需求是**優化個人後端工作流** |
-| **v1（本檔）** | **個人後端工作流，8 agent 精實編制** | — |
+| **v1（本檔）** | **個人後端工作流，7 agent 精實編制** | — |
 
 出場方案的設計細節存檔於附錄（§10），未來若擴編（多人/全棧）可取用。
 
@@ -66,7 +66,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 > 「七隻腳」＝上列 7 個 agent persona；Core 是編排（commands＋主對話），屬於頭的延伸，不佔腳、不設 agent 檔（§3.0）。
 >
-> 原 Examiner 守的「理解 vs 盲簽」邊界（盲簽 merge → 長期喪失對自己 codebase 的掌握）**不撤守**，v0.5 起改由 build 管線的**隨行回報**承接（§3.5、§5.2）——從 push 型的 merge 前抽考，換成 pull 型的逐 task code 導讀。Examiner 出場紀錄見 §10。
+> 「理解 vs 盲簽」邊界（盲簽 merge → 長期喪失對自己 codebase 的掌握）由 build 管線的**隨行回報**承接（§3.5、§5.2）：逐 task 的 code 導讀讓 TPM 邊做邊懂，不必事後回頭補看。此邊界不設獨立 agent，長在 Builder 的回報裡。
 
 ### 2.2 刻意不設的角色（與理由）
 
@@ -471,9 +471,8 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 |---|---|---|---|
 | **P1 諮詢+輕通道** | Scout / Analyst / DBA + ask / db / quick | ✅ 已實作 | 在真實 repo 裝上後：`/octopus:db` 問三方言問題、`/octopus:ask` 問 codebase 問題，回答含來源標註 |
 | **P2 SDD 交付管線** | Architect / Builder / Reviewer / Debugger + spec / build / main / debug / review + command 層流程閘門 + Arena 決策沉澱 | ✅ 已實作（閘門為 command 步驟，見 §6.2） | 拿一個真實 SDD 專案走完 spec→Locked→build→驗收報告→merge 全程 |
-| **P2.1 理解檢核** | Examiner + build merge 前整合（quick 不考） | ✅ 已實作 | 動到程式邏輯的 build 於 merge 前出題問答；答錯獲得講解且不擋 merge |
 | **P3 基建** | 程式化 hooks 備援、session memory + `/octopus:recall`、模型分級（Scout 輕量、其餘重） | 🔶 部分完成：hooks 第一批 ✅（主幹保護＋spec 狀態機，見 §6.2）；其餘 hooks / memory / 模型分級 ⏳ | 在目標 repo 實測：主幹 commit、force push、spec 跳關改 status 皆被 exit 2 擋下且訊息可讀 |
-| **P4 v0.5 換血** | OpenSpec 格式全面採納（init 接管 v1.x/v0.x、CLI 前置依賴、狀態機遷至 `.openspec.yaml`）、Builder 回合制隨行回報、Examiner 退場、`/octopus:overview`、browser 驗證 opt-in、spec-status-guard 改寫 | ⏳ 設計完成、待實作 | 在真實 openspec repo：`/octopus:spec` 產出可過 `openspec validate` 的 change；build 逐 task 回報且勾選的 browser 驗證附截圖；archive 後 delta 正確合回主 spec；「code 已修、資料待補」的 change 能留開追蹤 |
+| **P4 v0.5 換血** | OpenSpec 格式全面採納（init 接管 v1.x/v0.x、CLI 前置依賴、狀態機遷至 `.openspec.yaml`）、Builder 純執行層＋逐 task 隨行回報（回合制為進度可見契約的當前實作）、`/octopus:overview`、browser 驗證 opt-in、spec-status-guard 改寫 | ⏳ 設計完成、待實作 | 在真實 openspec repo：`/octopus:spec` 產出可過 `openspec validate` 的 change；build 逐 task 回報且勾選的 browser 驗證附截圖；archive 後 delta 正確合回主 spec；「code 已修、資料待補」的 change 能留開追蹤 |
 
 ---
 
@@ -510,6 +509,5 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 - **全棧雙 Builder（v0.x）**：+UI 前端專家（GD-Data 的前端鏡像）、Builder 拆 FE/BE、task 端別欄位確定性路由。出場原因：定位收斂為後端專用
 - **UI/UX 設計官（v0.x）**：實作前出 design tokens/佈局，實作後「截圖→挑刺→修正」精緻度審查迴圈（上限 2~3 輪）。出場原因：同上
 - **Guardian 治理 agent（v0.x）**：spec 狀態流轉的專職裁決者。出場原因：狀態流轉是確定性動作，hooks + command 就能做，不用 agent
-- **Examiner 考官（v0.3，P2.1）**：merge 前依 diff＋spec 出 2~4 題功能理解題的認知債對齊（教學型不擋門）。出場原因：TPM 要的是「隨行理解每條 task 對應的 code」，push 型抽考換成 Builder 回合制的隨行回報（每 task 附 code 導讀與自主決定，§3.5）——**邊界不撤守，形式退場**。若未來回到「多人團隊、merge 前需要證明理解」的情境可取回
 - **自有 spec 格式（`specs/NNN-*`＋frontmatter status，v0.1~v0.3）**：含內建 EARS 範本 `templates/spec-template.md`、「範本跟著目標 repo 走」讓位規則。出場原因：v0.5 全面換血為 OpenSpec 格式——活文件＋change 生命週期原生支援「修復狀態追蹤」（code 已修、資料待補、未 archive＝留開），狀態機平移到 change 的 `.openspec.yaml`
 - **擴編路線（若部署到團隊共用）**：意圖漂移檢查官（比對客戶原話＝糾紛留痕）、合約對齊驗收官（範圍對齊＝請款驗收）、UAT 測試官（客戶驗收測試）獨立成編——專案公司情境約 11~13 agent。原則：每多一條「對外部利害關係人的問責邊界」，加回一個守邊界的 agent
