@@ -7,7 +7,7 @@ argument-hint: <change 名稱/路徑，或一段需求描述>
 
 ## 情境 A：輸入是 change（名稱或路徑，`openspec/changes/<name>/` 找得到）
 
-1. Read 該 change 的 proposal 與 specs delta，以及 `.openspec.yaml` 的 `octopus.status`。狀態不限（Draft 也可以拆，方便估量）；**非 Locked 時在輸出頂部標註**：「⚠ 本 tasklist 基於 <status> change，鎖定前可能變動；/octopus:build 入口會將 Draft 自動鎖定後執行」
+1. Read 該 change 的 proposal 與 specs delta，以及 `.openspec.yaml` 的 `octopus.status`。狀態不限（Draft 也可以拆，方便估量）；**非 Locked 時在輸出頂部標註**：「⚠ 本 tasklist 基於 <status> change，鎖定前可能變動；要進實作請先在 /octopus:spec 或 /octopus:build 入口拍板鎖定」
 2. 用 Agent 工具啟動 **architect**（情境 B）展開 tasks（相依順序＋對應 Requirement＋驗證方式）
 3. 完整轉述給使用者
 

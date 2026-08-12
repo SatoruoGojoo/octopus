@@ -6,6 +6,7 @@
 
 - 不知道某情境該用哪個指令、術語看不懂？先看 [使用指南](docs/使用指南.md)（情境 → 指令決策地圖＋術語對照表）。
 - 想了解設計原理與各腳的邊界？看 [Octopus 功能文件](docs/Octopus-功能文件.md)（權威設計文件）。
+- 想知道某個功能為什麼被砍掉？看 [退場紀錄](docs/退場紀錄.md)。
 
 ## 安裝
 
@@ -49,18 +50,18 @@ claude --plugin-dir C:/Users/MX/Project/octopus
 
 ### SDD 交付管線
 
-設計原則：**拍板一個 OK，之後全自主、不中途等人**。硬停點只有一個（驗收 merge）；spec 產出後你只需回一個 **OK**（＝決策卡全採建議＋鎖定），加 `auto` 連 OK 都省——
+設計原則：**拍板一個 OK，之後全自主、不中途等人**。整條管線**只有兩個停點**——拍板 OK 與驗收 merge，沒有第三個，也沒有跳過任一個的模式。
 
 | 指令 | 用途 |
 |---|---|
 | `/octopus:spec <需求>` | 討論段：釐清＋挑戰 → **OpenSpec change 一次落檔**（proposal＋spec delta＋tasks，Draft）→ 你看完整包回 OK →【拍板停點】鎖定。**可以停在這**，改天再 build |
-| `/octopus:build <change>` | 執行段（**全自主**）：入口 Draft **自動鎖定**（未定案決策卡取建議選項＋留痕；Implemented/已歸檔拒絕）→ Builder **逐 task** 照 tasks 實作＋測試（**每條 task 即時回報**：做了什麼／code 導讀／自主決定）→ 審查 → **P1 自動退修（上限 3 輪）** → browser 驗證（拍板時有勾才做）→ 帶驗收報告回來 →【唯一硬停點】你 merge → tasks 全完成則（經你點頭）`openspec archive` 結案 |
-| `/octopus:main <需求>` | 兩段連跑：一個 OK 拍板後全自主直達驗收報告；加 `auto` 純一條龍（入口自動鎖定，連 OK 都省） |
+| `/octopus:build <change>` | 執行段（**全自主**）：驗 `Locked`（Draft 會停下請你拍板；Implemented/已歸檔拒絕）→ Builder **逐 task** 照 tasks 實作＋測試（**每條 task 即時回報**：做了什麼／code 導讀／自主決定）→ 審查 → **P1 自動退修（上限 3 輪）** → 帶驗收報告回來 →【唯一硬停點】你 merge → tasks 全完成則（經你點頭）`openspec archive` 結案 |
+| `/octopus:main <需求>` | 兩段連跑：一個 OK 拍板後全自主直達驗收報告 |
 | `/octopus:tasks <change 或需求>` | 單獨產 tasklist：給 change 就展開；給需求文字就先輕量釐清再拆（標明非正式）。不實作 |
 
-執行段**不中途等人、但看得到進度**：Builder 每完成一條 task 即時回報（單向呈現，不等你回覆——這也是你隨行理解每條 task 對應 code 的機制）；高風險決策取保守預設＋決策卡留痕、P1 三輪修不乾淨直接收尾標紅、spec 矛盾標註後繼續——全部集中呈報在驗收報告開頭的「執行中自動拍板清單」，你不 merge 即否決（branch 上一切可逆）。想逐步盯流程或親自拍板？指令加 `step`。
+執行段**不中途等人、但看得到進度**：Builder 每完成一條 task 即時回報（單向呈現，不等你回覆——這也是你隨行理解每條 task 對應 code 的機制）；高風險決策取保守預設＋決策卡留痕、P1 三輪修不乾淨直接收尾標紅、spec 矛盾標註後繼續——全部集中呈報在驗收報告開頭的「執行中自動拍板清單」，你不 merge 即否決（branch 上一切可逆）。看到方向不對隨時可以插話打斷。
 
-change 狀態（Draft/Locked/Implemented）記在該 change 的 `.openspec.yaml`（`octopus.status`），只由 command 確定性改寫（手動拍板或 build 入口自動鎖定，自動鎖定必留痕）——agent 無權動狀態。**merge ≠ 結案**：merge 決定 code 進主幹，`openspec archive` 才結案（delta 合回主 spec）；tasks 沒做完（如舊資料待補）可以先 merge、change 留開追蹤修復狀態。
+change 狀態（Draft/Locked/Implemented）記在該 change 的 `.openspec.yaml`（`octopus.status`），只由 command 確定性改寫——agent 無權動狀態。**`Locked` 只有一個意思：你拍板過了**（沒有自動鎖定的旁路）。**merge ≠ 結案**：merge 決定 code 進主幹，`openspec archive` 才結案（delta 合回主 spec）；tasks 沒做完（如舊資料待補）可以先 merge、change 留開追蹤修復狀態。
 
 ## 使用須知
 
@@ -80,8 +81,9 @@ change 狀態（Draft/Locked/Implemented）記在該 change 的 `.openspec.yaml`
 
 ## 版本
 
-v0.5.0 — OpenSpec 換血：spec 格式全面改用 OpenSpec（活文件＋change 生命週期，狀態機遷至 `.openspec.yaml`，merge ≠ archive 原生支援修復追蹤）；Builder 逐 task 隨行回報（每 task 附 code 導讀）；`/octopus:overview` 專案鳥瞰；browser 驗證 opt-in（tasks 標 browser、拍板勾選、Core 親自操作＋截圖）。
-v0.4.0 — 守門跟著管線走：hook 改由 run-marker（TTL 4h）啟動，日常工作零干預；規劃輕問＋epic 模式（Architect 自主判斷單 spec 或拆 epic＋roadmap，逐 epic 交付、各自驗收 merge）。
+v0.6.0 — **減法**：砍掉 `auto` 模式、`step` 模式、epic/roadmap、管線內 browser 驗證與規劃輕問。停點收斂為兩個（拍板 OK、驗收 merge），`Locked` 恢復單義（＝TPM 拍板過，無自動鎖定旁路）；設計文件瘦身、設計痕跡移入 `docs/退場紀錄.md`。指令數不變。
+v0.5.0 — OpenSpec 換血：spec 格式全面改用 OpenSpec（活文件＋change 生命週期，狀態機遷至 `.openspec.yaml`，merge ≠ archive 原生支援修復追蹤）；Builder 逐 task 隨行回報（每 task 附 code 導讀）；`/octopus:overview` 專案鳥瞰。
+v0.4.0 — 守門跟著管線走：hook 改由 run-marker（TTL 4h）啟動，日常工作零干預。
 v0.3.0 — 停點模型 v0.3：拍板收斂成一個 OK，執行段不中途等人；build 入口 Draft 自動鎖定。
 v0.2.0 — 程式化 hooks 第一批上線：主幹保護（branch-guard）＋ spec 狀態機保護（spec-status-guard），兩條最貴的紅線從 prompt 紀律升級為程式閘門。
 v0.1.0 — 諮詢（ask/db）＋輕通道（quick）＋ SDD 交付管線（spec/build/main）＋ debug/review 全部可用。
