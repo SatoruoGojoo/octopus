@@ -1,6 +1,6 @@
 # Octopus 功能文件
 
-> **版本**：v0.6
+> **版本**：v0.7
 > **形式**：Claude Code plugin
 > **本檔定位**：Octopus 的權威設計文件——**只寫「現在的行為是什麼」**。實作（agents/、commands/）一律從本檔推導；實作與本檔衝突時，回到本檔修訂後再改實作。
 > **設計過程的思考痕跡不放這裡**：被砍掉的方案與砍掉的理由存於 [退場紀錄.md](退場紀錄.md)。
@@ -78,7 +78,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 ### 2.3 設計支柱（不縮的部分）
 
-- **quick/main 雙通道**（§5）：小事不過管線，防流程形式主義
+- **管線只服務需要 spec 的工作**（§5.3）：小事不進 Octopus，防流程形式主義
 - **Arena 知識庫**（§6.1）：拍板決策跨 session 沉澱
 - **hooks 紀律**（§6.2）：流程閘門用程式強制，不靠 agent 自覺
 - **session memory**（Phase 3）
@@ -158,8 +158,8 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 | | |
 |---|---|
-| 職責 | 從 Locked change（或 quick 任務）實作 code＋測試；每完成一條 task 出一則 task 回報 |
-| 輸入 | Locked change + tasks（main/build 管線），或直接的小修描述（quick） |
+| 職責 | 從 Locked change 實作 code＋測試；每完成一條 task 出一則 task 回報 |
+| 輸入 | Locked change + tasks（main/build 管線） |
 | 輸出 | feature branch 上的 commits + 測試 + 每條 task 的 task 回報 + 最終變更摘要 |
 | 紅線 | **一律在 feature branch 工作，絕不直接改主幹**（TPM 合併權的執行機制）；測試跟著實作走，不可宣稱完成而無測試（除非 change 明示免測並有理由） |
 
@@ -216,7 +216,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 驗收模式＝**報告放行為主，高風險變更點親掃**。報告必含四段，5 分鐘內可判斷：
 
 ```markdown
-## 驗收報告：<change 名稱 / quick 任務>
+## 驗收報告：<change 名稱>
 
 ### 做了什麼
 <對應驗收標準逐條：✅ 通過（證據 file:line）/ ⚠️ 部分 / ❌ 未做>
@@ -246,11 +246,9 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 | `/octopus:ask` | codebase/git/進度問答 | Scout 直答 |
 | `/octopus:overview` | 專案鳥瞰：分層架構＋模組職責＋依賴方向＋關鍵流程走讀（§3.1） | Scout 直答 |
 | `/octopus:db` | DB 三方言諮詢 | DBA 直答 |
-| `/octopus:quick` | 小修小補：不啟動管線、不開 change | Builder 直做（仍出簡版報告） |
 | `/octopus:spec` | SDD 討論段（可獨立停住） | Analyst → Architect → change 落檔（proposal＋delta＋tasks）→【拍板 OK 停點】→ Locked |
 | `/octopus:build <change>` | SDD 執行段（**全自主**） | 驗 Locked → Builder 逐 task 隨行回報 → Reviewer → P1 自動修（≤3 輪）→【驗收 merge】→ archive |
 | `/octopus:main` | spec + build 連跑（拍板一個 OK 後全自主） | 上兩段串接，零重複邏輯 |
-| `/octopus:tasks` | 單獨產 tasklist（change 或需求文字皆可；不實作） | Architect（情境 B）；無 change 時 Analyst 輕量釐清先行 |
 | `/octopus:debug` | 根因分析 | Debugger |
 | `/octopus:review` | 單獨審查（不限管線產出） | Reviewer |
 | `/octopus:recall` | session 恢復 | Phase 3 |
@@ -321,7 +319,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 - **`openspec` CLI 是前置依賴**：validate / archive 等確定性動作交給 CLI（code 能答的不用模型）；init 與 spec/build 入口檢查 CLI，缺則停下請使用者安裝（附官方安裝指引），**不自行模擬 CLI 行為**
 - **與 `/opsx:*` 共存的立場**：`openspec init` 會在目標 repo 裝 OpenSpec 自己的 AI 工作流指令。查詢類（status/list/show/view）隨意用；**會動檔案的工作流（propose/apply/archive）建議走 `/octopus:*`**——feature branch 紀律、拍板停點、狀態機、守門 hook 只在 Octopus 管線內有保障，混用會造成狀態漂移
 - **行為規格句式跟 OpenSpec 官方格式走**：`### Requirement:`（SHALL/MUST）＋`#### Scenario:`（GIVEN/WHEN/THEN），每條 Requirement 至少一個可測 Scenario——「行為必可測」的原則不變，句式讓位給 `openspec validate` 認得的結構。proposal 保留「目標與動機」脈絡（change 兼任業務故事）
-- `/octopus:quick` 明確**不開 change**——防形式主義；判準：單檔可定位、不碰 schema/契約/權限的修改。要留修復追蹤紀錄的工作請開 change（哪怕很小）
+- **管線只服務「改變預期行為」的工作**——判準不是改動大小，是 **spec 要不要變**：純缺陷修正（code 沒做到 spec 本來就寫的事）修完 spec 一個字不用改，沒有 delta 可寫，不進管線、直接在主對話處理；預期行為要變、或發現該行為從未被寫進主 spec，才開 change。這是刻意的邊界不是漏洞——代價是日常小修時無 run-marker，hooks 不生效（§6.2），主幹保護在 Octopus 之外靠 TPM 自律
 - **完工文件同步（build 收尾，不另設停點）**：merge 後補 proposal 的「相關 API」表，並列出本次變更使哪些既有文件過時的建議更新清單
 - **修復場景**：bug 修復＝開一筆 `fix-*` change；「code 已修、舊資料待補」＝tasks 部分打勾＋change 未 archive；結案時機（archive）由 TPM 控制——OpenSpec 官方查無「部署後修復追蹤」概念，這是 Octopus 賦予 change 生命週期的用法
 
@@ -344,7 +342,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 **熱路徑成本**（hook 是 user-scope，每個專案的每次工具呼叫都會跑）：hook 必須先用純字串判斷確認「這次呼叫可能踩到不變量」，才做任何昂貴動作（spawn 子行程、讀檔）。`branch-guard` 由此定下不變量：**指令不含 `git` 時直接 exit 0，不查分支**。子行程只為真正需要 `branch` 的規則（主幹上的 `git commit`、裸 `git push`）而開。
 
-**生效範圍——守門跟著管線走**：機械守門真正要保護的對象是**全自主執行段裡沒人盯著的 agent**，不是使用者日常指揮的 Claude。實作為 **run-marker**：管線 command（spec/build/main/quick）起跑時寫入 `.claude/.octopus-arena/.run`（ISO 8601 時間戳，一行），收尾時刪除。兩支 hook 做任何昂貴動作前，先從 payload `cwd` 往上找 `.run`——**存在且未過期（TTL 4 小時）才啟動守門，否則直接 exit 0**。TTL 是 crash 殘留的兜底。推論：
+**生效範圍——守門跟著管線走**：機械守門真正要保護的對象是**全自主執行段裡沒人盯著的 agent**，不是使用者日常指揮的 Claude。實作為 **run-marker**：管線 command（spec/build/main）起跑時寫入 `.claude/.octopus-arena/.run`（ISO 8601 時間戳，一行），收尾時刪除。兩支 hook 做任何昂貴動作前，先從 payload `cwd` 往上找 `.run`——**存在且未過期（TTL 4 小時）才啟動守門，否則直接 exit 0**。TTL 是 crash 殘留的兜底。推論：
 
 - 日常工作（無管線在跑）hook 零干預——含 merge、worktree 操作、主幹 commit
 - 管線收尾後 TPM 叫 Claude merge，**不再需要 `OCTOPUS_TPM_OK=1` 前綴**（marker 已清）；同意通道保留供執行中的例外
@@ -373,7 +371,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 ### 6.3 寫入隔離：feature branch
 
-每個交付任務（main/build/quick 涉及改 code 者）開 feature branch；**merge 權永遠在 TPM 手上**。
+每個交付任務（main/build 涉及改 code 者）開 feature branch；**merge 權永遠在 TPM 手上**。
 
 ### 6.4 誠實原則（全 agent 共用紅線）
 
@@ -441,7 +439,7 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 - 自主過程中的所有自動決定 SHALL 留紀錄可回溯
 
 **守門（run-marker）**
-- 管線 command（spec/build/main/quick）SHALL 於起跑寫入 `.claude/.octopus-arena/.run`（ISO 時間戳）、於收尾刪除
+- 管線 command（spec/build/main）SHALL 於起跑寫入 `.claude/.octopus-arena/.run`（ISO 時間戳）、於收尾刪除
 - WHEN 無有效 marker（不存在、逾 TTL 4 小時、或無法判讀），hooks SHALL 直接放行（exit 0）
 - WHEN marker 有效，hooks SHALL 執行 §6.2 表列攔截；`OCTOPUS_TPM_OK=1` 同意通道 SHALL 保留
 
@@ -454,11 +452,12 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 
 | Phase | 內容 | 狀態 | 完成判準 |
 |---|---|---|---|
-| **P1 諮詢+輕通道** | Scout / Analyst / DBA + ask / db / quick | ✅ 已實作 | 在真實 repo 裝上後：`/octopus:db` 問三方言問題、`/octopus:ask` 問 codebase 問題，回答含來源標註 |
+| **P1 諮詢** | Scout / Analyst / DBA + ask / db | ✅ 已實作 | 在真實 repo 裝上後：`/octopus:db` 問三方言問題、`/octopus:ask` 問 codebase 問題，回答含來源標註 |
 | **P2 SDD 交付管線** | Architect / Builder / Reviewer / Debugger + spec / build / main / debug / review + command 層流程閘門 + Arena 決策沉澱 | ✅ 已實作 | 拿一個真實 SDD 專案走完 spec→Locked→build→驗收報告→merge 全程 |
 | **P3 基建** | 程式化 hooks 備援、session memory + `/octopus:recall`、模型分級（Scout 輕量、其餘重） | 🔶 部分完成：hooks 第一批 ✅；其餘 hooks / memory / 模型分級 ⏳ | 在目標 repo 實測：主幹 commit、force push、spec 跳關改 status 皆被 exit 2 擋下且訊息可讀 |
 | **P4 OpenSpec 換血** | OpenSpec 格式全面採納（init 接管 v1.x/v0.x、CLI 前置依賴、狀態機遷至 `.openspec.yaml`）、Builder 純執行層＋逐 task 隨行回報、`/octopus:overview`、spec-status-guard 改寫 | ⏳ 設計完成、待實測 | 在真實 openspec repo：`/octopus:spec` 產出可過 `openspec validate` 的 change；build 逐 task 回報；archive 後 delta 正確合回主 spec；「code 已修、資料待補」的 change 能留開追蹤 |
-| **P5 減法** | 砍 `auto`／`step`／epic+roadmap／管線內 browser 驗證；停點收斂為兩個；`Locked` 恢復單義；設計文件瘦身 | ✅ 已實作（本版） | 全 repo 掃不到 auto/step/epic/roadmap/browser 的管線語意殘留；停點表只有兩列 |
+| **P5 減法** | 砍 `auto`／`step`／epic+roadmap／管線內 browser 驗證；停點收斂為兩個；`Locked` 恢復單義；設計文件瘦身 | ✅ 已實作（v0.6） | 全 repo 掃不到 auto/step/epic/roadmap/browser 的管線語意殘留；停點表只有兩列 |
+| **P6 入口減法** | 砍 `/octopus:quick`（實測從未使用）與 `/octopus:tasks`（規格重複）；管線判準改為「spec 要不要變」；Architect 章節重組（tasklist 規格獨立成節） | ✅ 已實作（本版） | 全 repo 掃不到 quick/tasks 指令殘留；指令數 11→9；architect.md 不再有「情境 B」這個並列模式 |
 
 **下一步優先於加功能**：拿兩個真實專案各跑三筆 change，補上四個指標——返工率、缺陷攔截數、每筆交付 TPM 回答次數、token 成本。§9 的 Open Questions 多半要靠使用回答，不靠設計回答。
 
@@ -470,17 +469,19 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 
 | 風險 | 緩解 |
 |---|---|
-| main 管線多輪 token 成本 | quick 通道分流；Analyst 兩輪上限 |
+| main 管線多輪 token 成本 | 不改變預期行為的小事不進管線（§5.3）；Analyst 兩輪上限 |
 | 杜撰 schema/契約 | 四級來源標註 + 查無明說（§6.4） |
 | Builder 寫壞 code | feature branch 隔離 + TPM 驗收才 merge |
 | Reviewer 單點誤判 | solo 本來就沒有更多眼睛——接受，但高風險變更點強制 TPM 親掃 |
-| spec 形式主義（小事也走全管線） | quick 通道存在且判準明確（§5.3） |
+| spec 形式主義（小事也走全管線） | 判準是「spec 要不要變」，不是改動大小（§5.3） |
+| 日常小修完全無守門（無 marker → hooks 不生效） | 接受——管線外的紀律本來就靠 TPM；Octopus 不假裝全覆蓋 |
 | Arena 與 code 失同步 | 只沉澱決策、不沉澱可推導事實 |
 | 功能與模式再度膨脹 | §1.4 第二公理：新增分支前先答「刪掉它會壞什麼」 |
 
 ### Open Questions（待使用後拍板）
 
-- quick 與 change 的界線實際拿捏（用兩週後回頭調判準）
+- 「spec 要不要變」這條判準在真實 itracker 卡上好不好判（用兩週後回頭看：有沒有出現「以為是缺陷、其實是預期行為要變」的誤判）
+- 既有專案主 spec 為空時，如何把「本來就對的行為」補進 `openspec/specs/`——目前唯一寫入路徑是 archive 一筆 change，缺一個正式入口
 - 跨專案共用 Arena（個人層級的知識庫）要不要做
 - `/opsx:*` 與 `/octopus:*` 共存的實際邊界（查詢類混用兩週後回頭看有沒有狀態漂移）
 - v0.x legacy openspec 專案的接管細節（要不要代跑 `openspec update` 升級）

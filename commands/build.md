@@ -23,7 +23,7 @@ argument-hint: <change 名稱或路徑>
 
 ### 1. 取得 tasks
 Read 同目錄 `tasks.md`（/octopus:spec 已連 change 一起產出）。
-若缺檔（手建的 change）→ 啟動 **architect**（情境 B）補產，**不停等確認**，繼續往下。
+若缺檔（手建的 change）→ 啟動 **architect**（窄入口：補產 tasks.md）補產，**不停等確認**，繼續往下。
 
 用主對話的 todo 清單登記全部 tasks——這是 TPM 的進度條，每條回報後勾銷。
 

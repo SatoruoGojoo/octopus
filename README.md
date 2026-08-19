@@ -35,14 +35,13 @@ claude --plugin-dir C:/Users/MX/Project/octopus
 |---|---|
 | `/octopus:init` | 把既有專案接上 Octopus：檢查 OpenSpec CLI 與結構（缺則引導安裝/初始化）、摸專案概況、盤點 change 狀態（缺的問你補登）、建 Arena＋gitignore、出交接報告 |
 
-### 諮詢與輕通道
+### 諮詢通道（唯讀）
 
 | 指令 | 用途 |
 |---|---|
 | `/octopus:ask <問題>` | 問這個專案的 codebase / git 歷史 / 進度（Scout 唯讀直答，附來源標註） |
 | `/octopus:overview [範圍]` | 專案鳥瞰：分層架構＋模組職責＋依賴方向＋關鍵流程走讀（Scout 唯讀、敘事型、不落檔） |
 | `/octopus:db <問題>` | DB 諮詢：schema 設計、SQL Server/SQLite/PostgreSQL 方言差異、migration 影響、索引（DBA 唯讀，不連 DB） |
-| `/octopus:quick <任務>` | 小修小補輕通道：單檔可定位、不碰 schema/契約/權限的修改，直接做完出簡版報告（在 feature branch 上） |
 | `/octopus:debug <錯誤>` | 根因分析：症狀 → 定位 → 根因 → 為什麼以前沒炸 → 修法選項 |
 | `/octopus:review [branch]` | 單獨審查：7 級嚴重度 + 高風險變更點，產可直接貼 PR 的驗收報告 |
 
@@ -57,7 +56,8 @@ claude --plugin-dir C:/Users/MX/Project/octopus
 | `/octopus:spec <需求>` | 討論段：釐清＋挑戰 → **OpenSpec change 一次落檔**（proposal＋spec delta＋tasks，Draft）→ 你看完整包回 OK →【拍板停點】鎖定。**可以停在這**，改天再 build |
 | `/octopus:build <change>` | 執行段（**全自主**）：驗 `Locked`（Draft 會停下請你拍板；Implemented/已歸檔拒絕）→ Builder **逐 task** 照 tasks 實作＋測試（**每條 task 即時回報**：做了什麼／code 導讀／自主決定）→ 審查 → **P1 自動退修（上限 3 輪）** → 帶驗收報告回來 →【唯一硬停點】你 merge → tasks 全完成則（經你點頭）`openspec archive` 結案 |
 | `/octopus:main <需求>` | 兩段連跑：一個 OK 拍板後全自主直達驗收報告 |
-| `/octopus:tasks <change 或需求>` | 單獨產 tasklist：給 change 就展開；給需求文字就先輕量釐清再拆（標明非正式）。不實作 |
+
+**進不進管線看「spec 要不要變」，不是改動大小**：純缺陷修正（code 沒做到 spec 本來就寫的事）修完 spec 一個字不用改，沒有 delta 可寫——直接在對話中處理，不進 Octopus。預期行為要變、或發現該行為從未被寫進主 spec，才開 change。代價：管線外沒有 run-marker，兩支 hook 都不生效。
 
 執行段**不中途等人、但看得到進度**：Builder 每完成一條 task 即時回報（單向呈現，不等你回覆——這也是你隨行理解每條 task 對應 code 的機制）；高風險決策取保守預設＋決策卡留痕、P1 三輪修不乾淨直接收尾標紅、spec 矛盾標註後繼續——全部集中呈報在驗收報告開頭的「執行中自動拍板清單」，你不 merge 即否決（branch 上一切可逆）。看到方向不對隨時可以插話打斷。
 
@@ -81,6 +81,7 @@ change 狀態（Draft/Locked/Implemented）記在該 change 的 `.openspec.yaml`
 
 ## 版本
 
+v0.7.0 — **入口減法**：砍掉 `/octopus:quick`（實測從未使用）與 `/octopus:tasks`（規格與 spec 重複）。管線判準由「改動大小」改為 **「spec 要不要變」**——純缺陷修正不進 Octopus，直接在對話處理。Architect 章節重組：tasklist 規格獨立成節，「情境 A/B」並列模式改為「主線＋窄入口」。指令數 11→9。
 v0.6.0 — **減法**：砍掉 `auto` 模式、`step` 模式、epic/roadmap、管線內 browser 驗證與規劃輕問。停點收斂為兩個（拍板 OK、驗收 merge），`Locked` 恢復單義（＝TPM 拍板過，無自動鎖定旁路）；設計文件瘦身、設計痕跡移入 `docs/退場紀錄.md`。指令數不變。
 v0.5.0 — OpenSpec 換血：spec 格式全面改用 OpenSpec（活文件＋change 生命週期，狀態機遷至 `.openspec.yaml`，merge ≠ archive 原生支援修復追蹤）；Builder 逐 task 隨行回報（每 task 附 code 導讀）；`/octopus:overview` 專案鳥瞰。
 v0.4.0 — 守門跟著管線走：hook 改由 run-marker（TTL 4h）啟動，日常工作零干預。

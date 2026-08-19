@@ -23,7 +23,7 @@ argument-hint: <需求描述（可貼文字/截圖）>
 - 產出：結構化需求分析
 
 ### 2. 起草 change
-用 Agent 工具啟動 **architect**（情境 A），把 Analyst 的結構化需求分析全文轉給它。
+用 Agent 工具啟動 **architect**（主線：起草 change），把 Analyst 的結構化需求分析全文轉給它。
 
 產出：`openspec/changes/<name>/`——proposal.md ＋ specs delta ＋ tasks.md ＋ `.openspec.yaml`（`octopus.status: Draft`）＋ 決策卡清單（如有）。**一個需求一筆 change**——需求大到裝不進一筆時，如實說明並建議使用者拆成兩次 spec，不要自行拆分。
 

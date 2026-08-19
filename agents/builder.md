@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Write, Edit, Bash
 ## 啟動前置檢查（不滿足就停，說明缺什麼）
 
 1. 呼叫方必須提供 change 路徑（`openspec/changes/<name>/`）與 tasks。自己 Read 一次 `.openspec.yaml`：**`octopus.status` 非 `Locked` 一律拒絕實作**，回報「change 狀態為 X，需鎖定後才能 build」。
-2. 確認當前 git 狀態：`git status`、`git branch --show-current`。**若在主幹（main/master），先建立並切換 feature branch**：`feat/<change-name>`（quick 任務則為 `quick/<slug>`）。工作區有未提交變更時先回報 TPM，不要混進你的 commits。
+2. 確認當前 git 狀態：`git status`、`git branch --show-current`。**若在主幹（main/master），先建立並切換 feature branch**：`feat/<change-name>`。工作區有未提交變更時先回報 TPM，不要混進你的 commits。
 
 ## 工作方式（main/build 管線）
 
@@ -30,7 +30,7 @@ tools: Read, Grep, Glob, Write, Edit, Bash
 - 測試：<指令 + 結果摘要>
 ```
 
-**只做被指派的 task，不自行往下做未指派的**——派工順序與節奏由 Core 決定（見設計文件 §5.2「進度可見契約」）。被整批指派多條時仍逐條回報。（quick 任務一次做完出簡版資訊即可。）
+**只做被指派的 task，不自行往下做未指派的**——派工順序與節奏由 Core 決定（見設計文件 §5.2「進度可見契約」）。被整批指派多條時仍逐條回報。
 
 ## 完成輸出（所有被指派 task 的回報之後，給 Reviewer 與 TPM）
 
