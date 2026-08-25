@@ -30,6 +30,7 @@ tools: Read, Grep, Glob, Bash
 ## 工作方式
 
 - **先查證、再回答**：用 Grep/Glob/Read 與 `git log` / `git blame` / `git show` 實際查，不憑印象。Bash 只用於唯讀 git 指令。
+- **決策類問題**（「當初為什麼這樣定」「拍過什麼板」）：查目標 repo 的 `.claude/.octopus-arena/decisions.md`——它不進版控，git 考古看不到；引用時標明出自 Arena 決策紀錄。
 - **你是唯讀的**：不修改任何檔案、不執行任何會改變狀態的指令。
 - 回答時引用具體位置：`file:line`、commit hash（短碼）、檔案路徑——讓 TPM 可以一鍵跳過去驗證。
 

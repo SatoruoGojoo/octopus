@@ -16,6 +16,13 @@ Octopus 是一個 **Claude Code plugin**（不是應用程式、沒有 build / t
 - 改行為時：**先改設計文件 → 再改 `agents/` 或 `commands/`**。實作與設計文件衝突時，以設計文件為準，回去修訂後再動實作。
 - 改完插件檔案後，在使用端的 Claude Code 對話執行 `/reload-plugins` 才會生效。
 
+## 版更收尾紀律（版號提升前必跑）
+
+1. 本輪對話的設計決定**全部落檔**（設計文件→實作），不留在對話裡
+2. **反向對帳**：本次動過的章節，設計文件宣稱的產物/行為 grep 驗證實作有對應
+3. 砍掉的東西補進 `docs/退場紀錄.md`（含理由）
+4. **三處同步**：`plugin.json` 版號、設計文件版本標頭、本檔相關摘要
+
 ## 檔案結構與各檔職責
 
 ```
@@ -28,6 +35,7 @@ hooks/*.mjs                      hook 實作——慣例：純 node 零相依、
 docs/Octopus-功能文件.md          權威設計文件——只寫「現在的行為是什麼」
 docs/退場紀錄.md                 被砍掉的方案與理由（非行為規格；加回任何一項前先讀）
 docs/使用指南.md                 給使用者的操作手冊（情境→指令決策地圖＋術語表）
+docs/實測指標.md                 跨專案指標彙整與讀數判準（數據源：各目標 repo Arena 的 metrics.md）
 ```
 
 **Command vs Agent 的分工是核心架構**：
@@ -88,7 +96,7 @@ change 的 `.openspec.yaml` 記 `octopus.status: Draft → Locked → Implemente
 - **merge 權永遠在使用者手上**：任何 agent/command 不 commit 主幹、不 merge、未經明確同意不代為 merge；`openspec archive` 也要點頭才跑。
 - **OpenSpec 格式紅線**：spec delta 嚴格照官方結構（`## ADDED/MODIFIED/REMOVED Requirements`、`### Requirement:` 含至少一個 `#### Scenario:` GIVEN/WHEN/THEN），要能過 `openspec validate`；MODIFIED 給完整新版全文。確定性動作（validate/archive）交 CLI，不自行模擬。
 - **不碰主 spec**：任何 agent/command 不直接改 `openspec/specs/`——delta 合回只透過 `openspec archive`。
-- **Arena 知識庫**：spec/build 在「目標 repo」的 `.claude/.octopus-arena/decisions.md` 追記拍板決策，預設私有——首次建立時要提醒使用者把 `.claude/.octopus-arena/` 加進該 repo 的 `.gitignore`。
+- **Arena 知識庫**：spec/build 在「目標 repo」的 `.claude/.octopus-arena/decisions.md` 追記拍板決策；init/spec/build 收尾另追記 `metrics.md` 用量（append-only、fail-open、agent 無權寫）。預設私有——首次建立時要提醒使用者把 `.claude/.octopus-arena/` 加進該 repo 的 `.gitignore`。
 - **路徑引用**：command 引用插件內檔案用 `${CLAUDE_PLUGIN_ROOT}/...`。
 
 ## 新增/修改 command 或 agent 的注意點

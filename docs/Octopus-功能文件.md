@@ -1,6 +1,6 @@
 # Octopus 功能文件
 
-> **版本**：v0.7
+> **版本**：v0.8
 > **形式**：Claude Code plugin
 > **本檔定位**：Octopus 的權威設計文件——**只寫「現在的行為是什麼」**。實作（agents/、commands/）一律從本檔推導；實作與本檔衝突時，回到本檔修訂後再改實作。
 > **設計過程的思考痕跡不放這裡**：被砍掉的方案與砍掉的理由存於 [退場紀錄.md](退場紀錄.md)。
@@ -81,7 +81,17 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 - **管線只服務需要 spec 的工作**（§5.3）：小事不進 Octopus，防流程形式主義
 - **Arena 知識庫**（§6.1）：拍板決策跨 session 沉澱
 - **hooks 紀律**（§6.2）：流程閘門用程式強制，不靠 agent 自覺
-- **session memory**（Phase 3）
+- **管線自我追蹤**（`metrics.md`，§6.1——用量與指標由管線收尾自動追記）
+
+### 2.4 橫切機制（新增/修訂 agent 時的 checklist）
+
+所有 agent 規格共用五個「防 LLM 天性」的機制——它們不在職責欄，在紅線欄與輸出格式欄，新增或修訂 agent 時逐項檢查：
+
+1. **來源標註**：查證型 agent 的每個論斷標依據等級（權威／推導／文件示意／查無），查無不杜撰——防「聽起來合理」被說成事實
+2. **預算上限**：互動與迴圈都有上限，且超限後的降級行為有定義（Analyst ≤3 問×2 輪後改帶假設判斷、Debugger ≤2 問、P1 退修 ≤3 輪後標紅收尾）——防無限深挖
+3. **不可留白欄位**：輸出格式中「沒有就寫無」的強制誠實欄（Builder 自主決定、Reviewer 沒做什麼）——把「不提」變成格式違規
+4. **負面表列紅線**：不准做什麼寫到動作級，權力靠「紅線＋tools 最小權限＋hooks」三層疊——防越權
+5. **格式即介面**：輸出格式是 agent 之間的 API（tasks 的「需人眼確認」流進 Reviewer 高風險段、Builder 自主決定流進驗收報告開頭）——改格式＝改契約，要看下游
 
 ---
 
@@ -182,6 +192,8 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 | 輸出 | 根因報告（症狀→定位過程→根因→修法選項；修法有取捨時用決策卡） |
 | 紅線 | 區分「確認的根因」與「推測」，不得把推測寫成結論 |
 
+> **根因交接**：TPM 選定的修法會改變預期行為（或該行為從未寫進主 spec）→ 轉進 `/octopus:spec` 時**根因報告全文隨行**作為輸入；該 change 的 delta 必須把實際炸過的失敗案例編碼成至少一個 Scenario——回歸防護寫進 spec，Reviewer 逐條比對時自然涵蓋。
+
 ---
 
 ## 4. TPM 三介面規格
@@ -251,7 +263,6 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 | `/octopus:main` | spec + build 連跑（拍板一個 OK 後全自主） | 上兩段串接，零重複邏輯 |
 | `/octopus:debug` | 根因分析 | Debugger |
 | `/octopus:review` | 單獨審查（不限管線產出） | Reviewer |
-| `/octopus:recall` | session 恢復 | Phase 3 |
 
 ### 5.2 SDD 交付管線
 
@@ -327,11 +338,20 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 
 ## 6. 基建
 
-### 6.1 Arena 知識庫（預設私有）
+### 6.1 Arena（Octopus 私有工作區，預設私有）
 
-- 位置：目標 repo 的 `.claude/.octopus-arena/`，分片 markdown（`architecture.md` / `conventions.md` / `decisions.md` / `glossary.md`）
-- 原則：**只沉澱「拍板過的決策與 Open Questions」，不沉澱可從 code 推導的事實**（那些每次即時掃描，永不過時）
-- **知識面 vs 稽核面的分工**：`decisions.md` 是**跨 session 知識**（哪些決策拍過、為什麼），供日後回想；「這一輪 build 是否誠實執行」的**稽核**由驗收報告的「執行中自動拍板清單」與 feature branch commit 史承擔。run-marker（`.run`，§6.2）是**編排狀態**、不是知識，本就與 `decisions.md` 分開存放
+Arena（`.claude/.octopus-arena/`）是 Octopus 在目標 repo 的**唯一持久化落腳點**——所有足跡集中一個目錄：gitignore 一行、清理一處、hook 認一個路徑。三個住戶、三種性質，**新增住戶前先過 §1.4**：
+
+| 住戶 | 性質 | 誰寫 | 誰讀 |
+|---|---|---|---|
+| `decisions.md` | 知識（拍板決策、翻案史） | Core（停點追記） | spec 前置讀取、Scout（決策類考古） |
+| `.run` | 編排狀態（守門開關，§6.2） | Core（管線起訖） | hooks |
+| `metrics.md` | 遙測（用量與指標） | Core（收尾追記） | TPM（彙整到 `docs/實測指標.md`） |
+
+- **知識原則**：只沉澱「拍板過的決策與 Open Questions」，不沉澱可從 code 推導的事實（那些每次即時掃描，永不過時）。**通用記憶交給平台**（目標 repo 的 `CLAUDE.md`、auto-memory）——Octopus 只沉澱管線自己產生、平台記不了的東西
+- **讀取接線**（decisions.md 不是只寫不讀）：`/octopus:spec` 落檔前由 Core 讀取相關舊決策附進 Analyst/Architect 的輸入——與舊拍板衝突時明標「翻案」開決策卡，防無痕翻案；Scout 回答「當初為什麼這樣定」時查 decisions.md（Arena 不進版控，git 考古看不到它）
+- **`metrics.md`（append-only）**：init/spec/build 收尾時由 Core **確定性追記**本次 agent 呼叫用量（harness 回報的 subagent tokens）與段落小計——spec 小計附拍板往返次數、build 小計附 P1 退修輪數與攔截 P1/P2 數，服務 §8 四指標。fail-open：用量拿不到記「查無」、追記失敗不阻塞管線；agent 一律無權寫 metrics。跨專案彙整與讀數判準見 `docs/實測指標.md`（octopus repo，手動彙整）
+- **知識面 vs 稽核面的分工**：`decisions.md` 是**跨 session 知識**（哪些決策拍過、為什麼），供日後回想；「這一輪 build 是否誠實執行」的**稽核**由驗收報告的「執行中自動拍板清單」與 feature branch commit 史承擔
 - **預設加入目標 repo 的 `.gitignore`**：同事在同一公司 repo 各自用 Octopus 時，Arena 寫進 git 會默默變成共用狀態，違反「各自使用」的部署前提。想升級成團隊共享知識庫時，拿掉 gitignore 那行即可
 
 ### 6.2 流程閘門
@@ -454,10 +474,11 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 |---|---|---|---|
 | **P1 諮詢** | Scout / Analyst / DBA + ask / db | ✅ 已實作 | 在真實 repo 裝上後：`/octopus:db` 問三方言問題、`/octopus:ask` 問 codebase 問題，回答含來源標註 |
 | **P2 SDD 交付管線** | Architect / Builder / Reviewer / Debugger + spec / build / main / debug / review + command 層流程閘門 + Arena 決策沉澱 | ✅ 已實作 | 拿一個真實 SDD 專案走完 spec→Locked→build→驗收報告→merge 全程 |
-| **P3 基建** | 程式化 hooks 備援、session memory + `/octopus:recall`、模型分級（Scout 輕量、其餘重） | 🔶 部分完成：hooks 第一批 ✅；其餘 hooks / memory / 模型分級 ⏳ | 在目標 repo 實測：主幹 commit、force push、spec 跳關改 status 皆被 exit 2 擋下且訊息可讀 |
+| **P3 基建** | 程式化 hooks 備援、Arena 讀取接線（spec 前置讀取＋Scout 決策考古——取代原「session memory + `/octopus:recall`」構想，理由見退場紀錄）、模型分級（改為帶觸發條件的判準：實測佔比數據進來才動 frontmatter，見 `docs/實測指標.md` 讀數判準） | 🔶 部分完成：hooks 第一批 ✅、Arena 接線 ✅（v0.8）；其餘 hooks ⏳、模型分級等實測數據 | 在目標 repo 實測：主幹 commit、force push、spec 跳關改 status 皆被 exit 2 擋下且訊息可讀 |
 | **P4 OpenSpec 換血** | OpenSpec 格式全面採納（init 接管 v1.x/v0.x、CLI 前置依賴、狀態機遷至 `.openspec.yaml`）、Builder 純執行層＋逐 task 隨行回報、`/octopus:overview`、spec-status-guard 改寫 | ⏳ 設計完成、待實測 | 在真實 openspec repo：`/octopus:spec` 產出可過 `openspec validate` 的 change；build 逐 task 回報；archive 後 delta 正確合回主 spec；「code 已修、資料待補」的 change 能留開追蹤 |
 | **P5 減法** | 砍 `auto`／`step`／epic+roadmap／管線內 browser 驗證；停點收斂為兩個；`Locked` 恢復單義；設計文件瘦身 | ✅ 已實作（v0.6） | 全 repo 掃不到 auto/step/epic/roadmap/browser 的管線語意殘留；停點表只有兩列 |
-| **P6 入口減法** | 砍 `/octopus:quick`（實測從未使用）與 `/octopus:tasks`（規格重複）；管線判準改為「spec 要不要變」；Architect 章節重組（tasklist 規格獨立成節） | ✅ 已實作（本版） | 全 repo 掃不到 quick/tasks 指令殘留；指令數 11→9；architect.md 不再有「情境 B」這個並列模式 |
+| **P6 入口減法** | 砍 `/octopus:quick`（實測從未使用）與 `/octopus:tasks`（規格重複）；管線判準改為「spec 要不要變」；Architect 章節重組（tasklist 規格獨立成節） | ✅ 已實作（v0.7） | 全 repo 掃不到 quick/tasks 指令殘留；指令數 11→9；architect.md 不再有「情境 B」這個並列模式 |
+| **P7 自我治理** | Arena 定位改「私有工作區」（三住戶）＋ `metrics.md` 用量追蹤；Arena 讀取接線；debug→spec 根因交接；幽靈分片與 recall 構想退場；版更收尾紀律（CLAUDE.md）；§2.4 橫切機制 checklist | ✅ 已實作（本版） | 反向對帳通過：設計文件宣稱的每個產物/行為在 commands/agents 有對應 |
 
 **下一步優先於加功能**：拿兩個真實專案各跑三筆 change，補上四個指標——返工率、缺陷攔截數、每筆交付 TPM 回答次數、token 成本。§9 的 Open Questions 多半要靠使用回答，不靠設計回答。
 

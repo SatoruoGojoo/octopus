@@ -12,8 +12,8 @@ argument-hint: （無參數）
 - **結構偵測**：
   - 有 `openspec/config.yaml` → v1.x，直接接管
   - 有 `openspec/project.md` 或 `openspec/AGENTS.md`（無 config.yaml）→ v0.x legacy——提示使用者官方建議跑 `openspec update` 升級（並照官方 migration guide 手動把 project.md 內容遷到 config.yaml），**不代跑**；specs/changes 核心結構兩代一致，可先照常盤點
-  - 都沒有 → **停**，請使用者自行在終端跑 `openspec init`（互動式，不代跑），跑完回覆再續
-- **舊 Octopus 格式偵測**：Glob `specs/*/spec.md`（v0.4 前的 `specs/NNN-*` 格式）——有就列出並提示：未完成的舊 spec 建議改開成 change（`/octopus:spec` 重新走），已完工的留著當歷史即可；**不代遷移**
+  - 都沒有 → **停**，請使用者跑 `openspec init`；CLI 1.7.0+ 支援非互動參數，經使用者明確點頭後可代跑 `openspec init --tools claude --no-animation`（互動式版本仍不代跑）
+- **舊 Octopus 格式偵測**：Glob `specs/*/spec.md`（v0.4 前的 `specs/NNN-*` 格式）——有就列出並提示：已完工的留著當歷史即可；**留有未完成尾巴的**，建議 openspec 結構建立後把尾巴開成一筆 change 承接（`/octopus:spec`，把殘餘 tasks 當需求輸入）；**不代遷移**
 
 ### 2. 摸專案
 用 Agent 工具啟動 **scout**，請它回報專案概況：
@@ -34,6 +34,7 @@ argument-hint: （無參數）
 ### 5. 建 Arena
 - 建 `.claude/.octopus-arena/decisions.md`（表頭：`日期｜change｜決策｜結論`）
 - 檢查該 repo `.gitignore`：沒有 `.claude/.octopus-arena/` 這行就加上（Octopus 預設私有），並告知使用者已加
+- 把步驟 2 scout 的用量追記 `.claude/.octopus-arena/metrics.md`（append-only；無檔就自建，表頭 `| 日期 | 管線 | change | agent | 輪次 | tokens | 備註 |`；tokens 取 harness 回報、拿不到記「查無」；追記失敗不阻塞）
 
 ### 6. 交接報告（一屏內）
 ```markdown

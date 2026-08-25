@@ -45,6 +45,8 @@ Read 同目錄 `tasks.md`（/octopus:spec 已連 change 一起產出）。
 ### 4.【唯一硬停點：驗收 merge】
 先**刪除 `.claude/.octopus-arena/.run`**（確定性動作）——執行段結束，守門隨管線收尾解除，之後 TPM 同意的 merge 不再被 hook 攔。
 
+同時追記用量到 `.claude/.octopus-arena/metrics.md`（append-only；無檔就自建，表頭 `| 日期 | 管線 | change | agent | 輪次 | tokens | 備註 |`）：builder、reviewer（及 architect 窄入口，如有）各一列——輪次＝含 SendMessage 續派/退修的總次數，tokens 取 harness 回報、拿不到記「查無」；加一列 `build 小計`——備註記 P1 退修輪數與攔截 P1/P2 數。追記失敗不阻塞收尾（fail-open）。
+
 依序完整呈現：
 1. **執行中自動拍板清單**（過程中所有保守預設決策，用決策卡格式；沒有就寫「無」）
 2. 最終驗收報告（不刪減「高風險變更點」段落——含 Reviewer 建議親自在頁面確認的項目）
