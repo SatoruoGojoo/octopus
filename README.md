@@ -72,12 +72,19 @@ change 狀態（Draft/Locked/Implemented）記在該 change 的 `.openspec.yaml`
 - **Arena 知識庫**：spec/build 管線會在目標 repo 的 `.claude/.octopus-arena/decisions.md` 追記拍板決策，**預設請加進該 repo 的 `.gitignore`**（每人私有）；想升級成團隊共享再移除該行。
 - 本插件不連線任何資料庫、不需要任何憑證。
 
-## 給同事：第一次用建議
+## 第一次使用
 
 1. 裝好後在你的專案先跑 `/octopus:init`——它會檢查 OpenSpec 環境、盤點專案與 change 狀態，告訴你下一步
 2. 試 `/octopus:ask 這個專案的進入點在哪、分幾層？`
 3. 再試 `/octopus:db` 問一個你正在煩惱的 schema 問題（記得說你用哪種 DB）
 4. 需求很模糊的時候，把客戶訊息直接貼給 analyst，讓它先嗆你三個問題
+
+## 已知限制
+
+- **hooks 會在你的機器上執行 node**：`hooks/hooks.json` 註冊兩個 PreToolUse hook，以你的權限執行 `hooks/*.mjs`。兩支都是純 node、零相依、fail-open，程式碼在 repo 內可自行檢視。
+- **builder agent 有 Bash 權限**：交付管線執行中，builder 會在你的專案裡執行指令（跑測試、git 操作）。`branch-guard` 只守 git 相關紅線，**不是通用沙箱**。
+- **prompt injection 未設防**：scout / reviewer / debugger 會讀取目標 repo 的內容，若其中含惡意指示，agent 可能被影響。這是所有 AI coding agent 的共同弱點，Octopus 沒有針對它的緩解措施。
+- **管線外沒有守門**：hooks 只在管線執行中（`.claude/.octopus-arena/.run` marker 有效，TTL 4 小時）生效；日常對話中的 git 操作零干預。
 
 ## 授權
 

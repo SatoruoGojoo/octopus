@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 這個 repo 是什麼
 
-Octopus 是一個 **Claude Code plugin**（不是應用程式、沒有 build / test / runtime）。它本身就是 prompt 工程的成品：一組 markdown 定義的 agent 與 slash command，安裝後在「別的專案」裡用 `/octopus:<指令>` 驅動一個後端工作流 harness。
+Octopus 是一個 **Claude Code plugin**（不是應用程式、沒有 build / runtime）。它本身就是 prompt 工程的成品：一組 markdown 定義的 agent 與 slash command，安裝後在「別的專案」裡用 `/octopus:<指令>` 驅動一個後端工作流 harness。唯一的可執行程式碼是兩支 hook，附回歸測試——專案根執行 `node --test`。
 
 世界觀：**一顆頭（使用者＝TPM）＋ 七隻腳（專家 agent）**。TPM 只做三件不可替代的事——定義意圖、拍板取捨、驗收放行；agent 做其餘的實作、審查、考古、除錯。設計公理：harness 品質取決於三個 TPM 介面（需求進口、決策呈現、驗收出口）的品質，不是 agent 數量。
 
@@ -32,6 +32,7 @@ commands/*.md                    slash command：主對話讀完後依步驟編�
 agents/*.md                      sub-agent persona：frontmatter 宣告 name + tools，body 是行為規格
 hooks/hooks.json                 程式化守門註冊（PreToolUse；守門跟著管線走——只在 .octopus-arena/.run marker 有效（TTL 4h）時生效，subagent 也攔）
 hooks/*.mjs                      hook 實作——慣例：純 node 零相依、fail-open、判斷邏輯 export evaluate() 可獨立驗證、訊息 zh-TW 附解法（見設計文件 §6.2）
+hooks/*.test.mjs                 hook 判斷邏輯的回歸測試（node:test，零相依）——兌現「evaluate() 可獨立驗證」
 docs/Octopus-功能文件.md          權威設計文件——只寫「現在的行為是什麼」
 docs/退場紀錄.md                 被砍掉的方案與理由（非行為規格；加回任何一項前先讀）
 docs/使用指南.md                 給使用者的操作手冊（情境→指令決策地圖＋術語表）
