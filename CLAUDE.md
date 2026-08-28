@@ -37,6 +37,8 @@ docs/Octopus-功能文件.md          權威設計文件——只寫「現在的
 docs/退場紀錄.md                 被砍掉的方案與理由（非行為規格；加回任何一項前先讀）
 docs/使用指南.md                 給使用者的操作手冊（情境→指令決策地圖＋術語表）
 docs/實測指標.md                 跨專案指標彙整與讀數判準（數據源：各目標 repo Arena 的 metrics.md）
+CHANGELOG.md                     各版本行為變更（版號提升時追加，README 只留 badge 連結）
+LICENSE                          MIT 授權全文
 ```
 
 **Command vs Agent 的分工是核心架構**：
