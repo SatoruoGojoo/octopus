@@ -1,5 +1,6 @@
 {
   "name": "octopus",
+  "description": "TPM 導向的後端工作流 harness：SDD 交付管線（OpenSpec 格式）＋ 7 個專家 agent，一個 marketplace 一個 plugin。",
   "owner": {
     "name": "SatoruoGojoo"
   },
