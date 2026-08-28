@@ -2,3 +2,6 @@
 *.log
 .DS_Store
 Thumbs.db
+
+# 本機設定（含部署目標等，不進版控）
+.claude/settings.local.json
