@@ -30,11 +30,12 @@ const MENTIONS_GIT = /\bgit\b/;
  */
 export function evaluate(command, currentBranch) {
   if (!command || typeof command !== "string") return null;
-  if (/\bOCTOPUS_TPM_OK=1\b/.test(command)) return null;
+  if (/^\s*OCTOPUS_TPM_OK=1\s/.test(command)) return null;
 
-  // 粗粒度拆段：&&、||、;、| 視為潛在獨立指令，逐段檢查
+  // 粗粒度拆段：&&、||、;、|、換行 視為潛在獨立指令，逐段檢查。
+  // 換行必須切：命中 checkout 的分支追蹤會 continue 掉整段，不切就會漏掉同段後續指令。
   const segments = command
-    .split(/&&|\|\||;|\|/)
+    .split(/&&|\|\||;|\||\n|\r/)
     .map((s) => s.trim())
     .filter(Boolean);
 
