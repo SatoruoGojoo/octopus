@@ -12,14 +12,14 @@
 
 ```bash
 # 方式一：開發/快速試用（不安裝，僅該次 session 載入）
-claude --plugin-dir C:/Users/MX/Project/octopus
+claude --plugin-dir /path/to/octopus
 
-# 方式二：正式安裝（在 Claude Code 對話內執行）
-/plugin marketplace add C:/Users/MX/Project/octopus
+# 方式二：從本地目錄安裝（在 Claude Code 對話內執行）
+/plugin marketplace add /path/to/octopus
 /plugin install octopus@octopus
 
-# 方式三：推上 git 之後，同事安裝（在 Claude Code 對話內執行）
-/plugin marketplace add <git 網址或 owner/repo>
+# 方式三：從 GitHub 安裝（在 Claude Code 對話內執行）
+/plugin marketplace add SatoruoGojoo/octopus
 /plugin install octopus@octopus
 ```
 
@@ -81,11 +81,11 @@ change 狀態（Draft/Locked/Implemented）記在該 change 的 `.openspec.yaml`
 
 ## 授權
 
-GPL-3.0-or-later（全文見 [`LICENSE`](LICENSE)）。
+MIT（全文見 [`LICENSE`](LICENSE)）。
 
-你可以自由使用、修改、散布這個 plugin，包含商業用途。條件是：**散布修改後的版本時必須同樣以 GPL-3.0 開源**，並保留原始著作權聲明。
+你可以自由使用、修改、散布這個 plugin，包含商業用途與閉源修改。唯一條件是保留著作權聲明與授權條文。
 
-只在自己或公司內部使用、不對外散布，GPL 不產生任何額外義務。
+軟體按現狀提供，不附任何形式的擔保。
 
 ## 版本
 

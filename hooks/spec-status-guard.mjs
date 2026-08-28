@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Copyright (C) 2026 SatoruoGojoo
 // spec-status-guard.mjs — Octopus change 狀態機保護（PreToolUse / Edit|Write）
 //

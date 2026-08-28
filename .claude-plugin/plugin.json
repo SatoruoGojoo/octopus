@@ -3,9 +3,9 @@
   "displayName": "Octopus",
   "description": "個人後端工作流 harness：一顆頭（你，TPM）+ 七隻腳（7 個專家 agent）。需求釐清、DB 三方言諮詢、codebase 考古與鳥瞰、OpenSpec 格式的 SDD spec→build 交付管線。",
   "version": "0.8.0",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "author": {
-    "name": "ml-vicre"
+    "name": "SatoruoGojoo"
   },
   "keywords": ["backend", "workflow", "sdd", "openspec", "tpm", "harness"]
 }
