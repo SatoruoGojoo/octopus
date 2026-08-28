@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 SatoruoGojoo
 // spec-status-guard.mjs — Octopus change 狀態機保護（PreToolUse / Edit|Write）
 //
 // 守的不變量（設計文件 §5.2 / §6.2，v0.5 OpenSpec 換血後）：

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 SatoruoGojoo
 // branch-guard.mjs — Octopus 主幹保護（PreToolUse / Bash）
 //
 // 守的不變量（設計文件 §6.2 / §6.3）：merge 權永遠在 TPM 手上。

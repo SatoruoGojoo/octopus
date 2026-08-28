@@ -79,6 +79,14 @@ change 狀態（Draft/Locked/Implemented）記在該 change 的 `.openspec.yaml`
 3. 再試 `/octopus:db` 問一個你正在煩惱的 schema 問題（記得說你用哪種 DB）
 4. 需求很模糊的時候，把客戶訊息直接貼給 analyst，讓它先嗆你三個問題
 
+## 授權
+
+GPL-3.0-or-later（全文見 [`LICENSE`](LICENSE)）。
+
+你可以自由使用、修改、散布這個 plugin，包含商業用途。條件是：**散布修改後的版本時必須同樣以 GPL-3.0 開源**，並保留原始著作權聲明。
+
+只在自己或公司內部使用、不對外散布，GPL 不產生任何額外義務。
+
 ## 版本
 
 v0.7.0 — **入口減法**：砍掉 `/octopus:quick`（實測從未使用）與 `/octopus:tasks`（規格與 spec 重複）。管線判準由「改動大小」改為 **「spec 要不要變」**——純缺陷修正不進 Octopus，直接在對話處理。Architect 章節重組：tasklist 規格獨立成節，「情境 A/B」並列模式改為「主線＋窄入口」。指令數 11→9。
