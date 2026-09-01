@@ -30,7 +30,7 @@ Octopus 是一個 **Claude Code plugin**（不是應用程式、沒有 build / r
 .claude-plugin/marketplace.json  marketplace 條目（source: "."）
 commands/*.md                    slash command：主對話讀完後依步驟編排 agent
 agents/*.md                      sub-agent persona：frontmatter 宣告 name + tools，body 是行為規格
-hooks/hooks.json                 程式化守門註冊（PreToolUse；守門跟著管線走——只在 .octopus-arena/.run marker 有效（TTL 4h）時生效，subagent 也攔）
+hooks/hooks.json                 程式化守門註冊（PreToolUse；守門跟著管線走——只在 .octopus-arena/.run marker 有效（TTL 4h）時生效，subagent 也攔；marker 寫入後管線的每條出口都要刪，漏刪＝誤攔使用者日常 merge）
 hooks/*.mjs                      hook 實作——慣例：純 node 零相依、fail-open、判斷邏輯 export evaluate() 可獨立驗證、訊息 zh-TW 附解法（見設計文件 §6.2）
 hooks/*.test.mjs                 hook 判斷邏輯的回歸測試（node:test，零相依）——兌現「evaluate() 可獨立驗證」
 docs/Octopus-功能文件.md          權威設計文件——只寫「現在的行為是什麼」

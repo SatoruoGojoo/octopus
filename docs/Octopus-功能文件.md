@@ -369,6 +369,8 @@ Arena（`.claude/.octopus-arena/`）是 Octopus 在目標 repo 的**唯一持久
 - `/octopus:init` 是純粹的「理解專案＋建 Arena」，不隱含開啟管制
 - 判定不了（讀檔錯誤、時間戳無法解析等）視為無有效 marker，fail-open 放行
 
+**「收尾」＝任何出口，不只跑完**：marker 寫入後，管線的**每一條結束路徑**都要刪除它——正常收尾、入口閘門的停下與拒絕、需求被 Analyst 打回、validate 沒過、使用者中途喊停。漏刪的代價不是流程卡住而是**誤攔**：守門殘留到 TTL 到期，期間 TPM 日常的 merge 與主幹 commit 會被 `branch-guard` 擋下，正是守門設計上刻意不管的那一段。TTL 只是 crash 兜底，不是漏刪的擋箭牌。
+
 **阻塞等待一律要有上界**：hook 卡住的代價是整個工具呼叫卡住。凡是等外部的動作都要能自己逾時，逾時即 fail-open 放行：
 
 - 讀 stdin payload 用**非同步讀＋逾時**（`readStdin()`，5s）。**不可用 `readFileSync(0)`**——它同步阻塞 event loop 直到 EOF，harness 沒關 stdin 就永遠不返回，而且 `setTimeout` 看門狗此時根本觸發不了
@@ -460,6 +462,7 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 
 **守門（run-marker）**
 - 管線 command（spec/build/main）SHALL 於起跑寫入 `.claude/.octopus-arena/.run`（ISO 時間戳）、於收尾刪除
+- WHEN 管線在 marker 寫入後由任何路徑結束（正常收尾、入口閘門停下或拒絕、需求被打回、validate 未過、使用者喊停），SHALL 於回話前刪除 marker；SHALL NOT 靠 TTL 過期代替刪除
 - WHEN 無有效 marker（不存在、逾 TTL 4 小時、或無法判讀），hooks SHALL 直接放行（exit 0）
 - WHEN marker 有效，hooks SHALL 執行 §6.2 表列攔截；`OCTOPUS_TPM_OK=1` 同意通道 SHALL 保留
 

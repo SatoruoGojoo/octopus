@@ -14,7 +14,9 @@ argument-hint: <需求描述（可貼文字/截圖）>
 ### 0. 前置檢查＋起跑 run-marker（確定性動作）
 1. **`openspec` CLI**：Bash 跑 `openspec --version`。失敗 → **停**，請使用者先安裝（npm 全域安裝 OpenSpec CLI，指令以官方 README 為準：github.com/Fission-AI/OpenSpec），裝好回覆再續。
 2. **`openspec/` 結構**：目標 repo 沒有 `openspec/` → **停**，請使用者跑 `openspec init`；CLI 1.7.0+ 支援非互動參數，經使用者明確點頭後可代跑 `openspec init --tools claude --no-animation`（互動式版本仍不代跑）。
-3. 把當下 ISO 時間戳寫進 `.claude/.octopus-arena/.run`（目錄不存在先建立）——守門 hook 只在 marker 有效期間生效（守門跟著管線走，設計文件 §6.2）。本管線**收尾時必刪 marker**（步驟 4 之後，或使用者保持 Draft 結束時）。
+3. 把當下 ISO 時間戳寫進 `.claude/.octopus-arena/.run`（目錄不存在先建立）——守門 hook 只在 marker 有效期間生效（守門跟著管線走，設計文件 §6.2）。
+
+> **marker 是本管線的責任，任何出口都要清**：marker 寫入後，**每一條結束路徑都必須先刪除 `.run` 再回話**——步驟 4 的鎖定或保持 Draft、Analyst 打回需求（驗收不可測）、`openspec validate` 兩輪仍未過而呈報錯誤、或執行中被使用者喊停。漏刪會讓守門殘留到 TTL（4 小時）到期，期間使用者日常的 merge／主幹 commit 會被 `branch-guard` 誤攔。
 
 ### 1. 需求釐清
 先 Read `.claude/.octopus-arena/decisions.md`（如存在），挑出與本需求相關的舊拍板決策——之後連同需求原文一併轉給 analyst 與 architect（防止與舊決策靜默矛盾；方案確實要翻舊案時，明標「翻 <日期> 決策」並開決策卡）。

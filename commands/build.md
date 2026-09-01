@@ -13,6 +13,8 @@ argument-hint: <change 名稱或路徑>
 1. **CLI**：Bash 跑 `openspec --version`。失敗 → 停，請使用者先安裝（指令以官方 README 為準：github.com/Fission-AI/OpenSpec）。
 2. **run-marker**：把當下 ISO 時間戳寫進目標 repo 的 `.claude/.octopus-arena/.run`（目錄不存在先建立）——守門 hook 只在 marker 有效期間生效。本管線於步驟 4 呈報告前刪除。
 
+> **marker 是本管線的責任，任何出口都要清**：marker 寫入後，**每一條提早結束的路徑（下方的停下、拒絕，或執行中被使用者喊停）都必須先刪除 `.run` 再回話**。漏刪會讓守門殘留到 TTL（4 小時）到期，期間使用者日常的 merge／主幹 commit 會被 `branch-guard` 誤攔。
+
 解析 change（給名稱就找 `openspec/changes/<name>/`）：
 - 找不到 → 停，Bash 跑 `openspec list --changes`（或 Glob `openspec/changes/*/`）列出現有 change 供確認；位於 `changes/archive/` → **拒絕**（已歸檔結案，要改版請開新 change）
 - Read `.openspec.yaml` 的 `octopus.status`：
