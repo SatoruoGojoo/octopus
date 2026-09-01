@@ -3,7 +3,7 @@
 // Copyright (C) 2026 SatoruoGojoo
 // spec-status-guard.mjs — Octopus change 狀態機保護（PreToolUse / Edit|Write）
 //
-// 守的不變量（設計文件 §5.2 / §6.2，v0.5 OpenSpec 換血後）：
+// 守的不變量（設計文件 §5.3 狀態機 / §6.2 hook 表，v0.5 OpenSpec 換血後）：
 //   change 中繼資料檔 changes/<name>/.openspec.yaml 的 octopus.status 只能單步順向
 //   Draft → Locked → Implemented；禁回退、禁跳關、禁從既有檔移除；
 //   新 change 只能生為 Draft。
@@ -54,7 +54,7 @@ function checkTransition(from, to) {
   if (ORDER[to] === ORDER[from] + 1) return null; // 單步順向 OK（拍板時序由 command 流程把關）
   return [
     `⛔ Octopus spec-status-guard 擋下狀態變更 ${from} → ${to}。`,
-    "change 狀態機只允許單步順向：Draft → Locked → Implemented（設計文件 §5.2）。",
+    "change 狀態機只允許單步順向：Draft → Locked → Implemented（設計文件 §5.3）。",
     "回退或修復請 TPM 親手改 .openspec.yaml——hook 只攔 Claude 的工具呼叫。",
   ].join("\n");
 }

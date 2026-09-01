@@ -48,7 +48,8 @@ argument-hint: （無參數）
 ```
 
 ## 紅線
-- init 只補 `octopus.status`、建 Arena、改 .gitignore——**不動任何 spec/change 內容與實作 code**，不代跑 `openspec init`/`update`/`archive`
+- init 只補 `octopus.status`、建 Arena、改 .gitignore——**不動任何 spec/change 內容與實作 code**
+- CLI 代跑界線（設計文件 §5.3）：`openspec update`／`archive` **一律不代跑**（前者動既有內容、後者有結案語意）；只有「`openspec/` 不存在時建立空結構」可在使用者明確點頭後代跑非互動版 `openspec init`
 - 報告不落檔（可從 code 推導的事實不沉澱，要看就再跑 /octopus:ask）
 
 $ARGUMENTS

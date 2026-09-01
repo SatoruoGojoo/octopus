@@ -328,6 +328,7 @@ Octopus 是**個人後端工作流 harness**：給單一後端工程師使用的
 - **檔案格式全面採用 OpenSpec**（Fission-AI/OpenSpec，v1.x）：`openspec/specs/<domain>/spec.md` 是「系統現況」的活文件（純 markdown，無 frontmatter）；每筆工作——新功能、bug 修復、資料修補——都是 `openspec/changes/<name>/` 一筆 change（proposal.md＋specs delta＋design.md（如需）＋tasks.md）；結案 archive 時 delta 合回主 spec（ADDED 附加／MODIFIED 整段取代／REMOVED 刪除），整夾移入 `changes/archive/YYYY-MM-DD-<name>/`
 - **Octopus 狀態機掛在 change 上**：`changes/<name>/.openspec.yaml`（OpenSpec 官方未規範內容的中繼資料檔）寫入 `octopus.status: Draft / Locked / Implemented`；**狀態流轉只由 command 確定性寫入**，agent 一律無權改。Draft＝提案中、Locked＝TPM 拍板後執行中、Implemented＝已 merge；archive 後整夾移入 archive/ 即終態
 - **`openspec` CLI 是前置依賴**：validate / archive 等確定性動作交給 CLI（code 能答的不用模型）；init 與 spec/build 入口檢查 CLI，缺則停下請使用者安裝（附官方安裝指引），**不自行模擬 CLI 行為**
+- **CLI 的代跑界線**（誰按下 Enter）：Octopus 從不代跑**有破壞性或有結案語意**的 CLI 動作——`openspec archive`（改主 spec）需 TPM 逐次點頭、`openspec update`（legacy 升級）一律只提示不代跑。唯一的代跑是**建立空結構**：`openspec/` 不存在時，CLI 1.7.0+ 的非互動模式 `openspec init --tools claude --no-animation` 可在**使用者明確點頭後**由 init/spec 代跑（純新建、無既有內容可毀、失敗可重跑）；互動式版本仍不代跑。判準不是「誰比較方便」，是**這個動作出錯時毀不毀既有東西**
 - **與 `/opsx:*` 共存的立場**：`openspec init` 會在目標 repo 裝 OpenSpec 自己的 AI 工作流指令。查詢類（status/list/show/view）隨意用；**會動檔案的工作流（propose/apply/archive）建議走 `/octopus:*`**——feature branch 紀律、拍板停點、狀態機、守門 hook 只在 Octopus 管線內有保障，混用會造成狀態漂移
 - **行為規格句式跟 OpenSpec 官方格式走**：`### Requirement:`（SHALL/MUST）＋`#### Scenario:`（GIVEN/WHEN/THEN），每條 Requirement 至少一個可測 Scenario——「行為必可測」的原則不變，句式讓位給 `openspec validate` 認得的結構。proposal 保留「目標與動機」脈絡（change 兼任業務故事）
 - **管線只服務「改變預期行為」的工作**——判準不是改動大小，是 **spec 要不要變**：純缺陷修正（code 沒做到 spec 本來就寫的事）修完 spec 一個字不用改，沒有 delta 可寫，不進管線、直接在主對話處理；預期行為要變、或發現該行為從未被寫進主 spec，才開 change。這是刻意的邊界不是漏洞——代價是日常小修時無 run-marker，hooks 不生效（§6.2），主幹保護在 Octopus 之外靠 TPM 自律
@@ -360,6 +361,8 @@ Arena（`.claude/.octopus-arena/`）是 Octopus 在目標 repo 的**唯一持久
 
 **程式化 hooks 備援**：plugin 附帶 PreToolUse hooks（`hooks/hooks.json`），防 agent 被說服繞過 prompt 層閘門。挑選標準＝「失守代價最大的兩條紅線」。工程慣例：純 node、零相依、**fail-open**（hook 自身故障一律放行，不卡流程）、判斷邏輯以 `evaluate()` export 可獨立驗證、擋下訊息 zh-TW 並附解法。
 
+**回歸測試（`hooks/<name>.test.mjs`）**：`evaluate()` 的「可獨立驗證」由測試檔兌現——`node:test`、零相依、專案根 `node --test` 執行，只測純判斷邏輯（不起 hook 行程、不碰 stdin 與檔案系統）。現況：`branch-guard` ✅、`spec-status-guard` ⏳ 未補。守門邏輯改動時測試同批更新，是這兩支 hook 的修改前提。
+
 **熱路徑成本**（hook 是 user-scope，每個專案的每次工具呼叫都會跑）：hook 必須先用純字串判斷確認「這次呼叫可能踩到不變量」，才做任何昂貴動作（spawn 子行程、讀檔）。`branch-guard` 由此定下不變量：**指令不含 `git` 時直接 exit 0，不查分支**。子行程只為真正需要 `branch` 的規則（主幹上的 `git commit`、裸 `git push`）而開。
 
 **生效範圍——守門跟著管線走**：機械守門真正要保護的對象是**全自主執行段裡沒人盯著的 agent**，不是使用者日常指揮的 Claude。實作為 **run-marker**：管線 command（spec/build/main）起跑時寫入 `.claude/.octopus-arena/.run`（ISO 8601 時間戳，一行），收尾時刪除。兩支 hook 做任何昂貴動作前，先從 payload `cwd` 往上找 `.run`——**存在且未過期（TTL 4 小時）才啟動守門，否則直接 exit 0**。TTL 是 crash 殘留的兜底。推論：
@@ -379,7 +382,7 @@ Arena（`.claude/.octopus-arena/`）是 Octopus 在目標 repo 的**唯一持久
 | Hook | 攔截 | 守的不變量 | 例外（留痕） |
 |---|---|---|---|
 | `hooks/branch-guard.mjs` | PreToolUse(Bash) | **主幹保護**：擋「在 main/master 上 `git commit` / `git push`」「push 到 main/master」「`git merge`（`--abort`/`--quit` 善後除外）」「任何 force push」；同一指令串內 `checkout`/`switch` 換到主幹也會被追蹤 | TPM 明確同意時在指令前加 `OCTOPUS_TPM_OK=1 `——例外寫在指令裡＝可稽核；同意後 Claude 直接前綴重跑，不重複請示 |
-| `hooks/spec-status-guard.mjs` | PreToolUse(Edit\|Write) | **change 狀態機**：`octopus.status` 只能單步順向 `Draft → Locked → Implemented`，禁回退、禁跳關、禁刪除或憑空插入；新 change 只能生為 `Draft` | 回退/修復由 TPM 親手改檔（hook 只攔 Claude 的工具呼叫）；`openspec archive` 走 CLI（Bash），不經此 hook |
+| `hooks/spec-status-guard.mjs` | PreToolUse(Edit\|Write) | **change 狀態機**：`octopus.status` 只能單步順向 `Draft → Locked → Implemented`，禁回退、禁跳關、禁從既有檔刪除或憑空插入；新 change 只能生為 `Draft` | **補登**：檔案原本就沒有 `octopus.status`（init 步驟 4 由 TPM 逐筆確認後補登）→ 放行插入，不限值；回退/修復由 TPM 親手改檔（hook 只攔 Claude 的工具呼叫）；`openspec archive` 走 CLI（Bash），不經此 hook |
 
 界線：hook 守**確定性不變量**（程式能判定的）；鎖定的時序仍由 command 流程負責——hook 只驗「單步順向」，無從也無需得知這一步是誰確認的。這條界線是刻意的，不要試圖用 hook 驗語意。
 
@@ -481,7 +484,8 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 | **P4 OpenSpec 換血** | OpenSpec 格式全面採納（init 接管 v1.x/v0.x、CLI 前置依賴、狀態機遷至 `.openspec.yaml`）、Builder 純執行層＋逐 task 隨行回報、`/octopus:overview`、spec-status-guard 改寫 | ⏳ 設計完成、待實測 | 在真實 openspec repo：`/octopus:spec` 產出可過 `openspec validate` 的 change；build 逐 task 回報；archive 後 delta 正確合回主 spec；「code 已修、資料待補」的 change 能留開追蹤 |
 | **P5 減法** | 砍 `auto`／`step`／epic+roadmap／管線內 browser 驗證；停點收斂為兩個；`Locked` 恢復單義；設計文件瘦身 | ✅ 已實作（v0.6） | 全 repo 掃不到 auto/step/epic/roadmap/browser 的管線語意殘留；停點表只有兩列 |
 | **P6 入口減法** | 砍 `/octopus:quick`（實測從未使用）與 `/octopus:tasks`（規格重複）；管線判準改為「spec 要不要變」；Architect 章節重組（tasklist 規格獨立成節） | ✅ 已實作（v0.7） | 全 repo 掃不到 quick/tasks 指令殘留；指令數 11→9；architect.md 不再有「情境 B」這個並列模式 |
-| **P7 自我治理** | Arena 定位改「私有工作區」（三住戶）＋ `metrics.md` 用量追蹤；Arena 讀取接線；debug→spec 根因交接；幽靈分片與 recall 構想退場；版更收尾紀律（CLAUDE.md）；§2.4 橫切機制 checklist | ✅ 已實作（本版） | 反向對帳通過：設計文件宣稱的每個產物/行為在 commands/agents 有對應 |
+| **P7 自我治理** | Arena 定位改「私有工作區」（三住戶）＋ `metrics.md` 用量追蹤；Arena 讀取接線；debug→spec 根因交接；幽靈分片與 recall 構想退場；版更收尾紀律（CLAUDE.md）；§2.4 橫切機制 checklist；`openspec init` 非互動代跑界線 | ✅ 已實作（v0.8） | 雙向對帳通過：設計文件宣稱的產物/行為在 commands/agents 有對應，且 commands/agents 的每個行為在設計文件有依據 |
+| **P8 公開化** | MIT 授權（LICENSE＋三處標示）；README 改公開 repo 結構＋已知限制揭露；版本紀錄獨立為 CHANGELOG；`branch-guard` 換行拆段與同意條錨定修正；hook 回歸測試第一支（`branch-guard.test.mjs`） | ✅ 已實作（v0.8.1） | 公開 repo 慣例齊備（LICENSE/README/CHANGELOG）；`node --test` 綠燈；README 對外承諾與實際涵蓋範圍一致 |
 
 **下一步優先於加功能**：拿兩個真實專案各跑三筆 change，補上四個指標——返工率、缺陷攔截數、每筆交付 TPM 回答次數、token 成本。§9 的 Open Questions 多半要靠使用回答，不靠設計回答。
 
@@ -508,7 +512,7 @@ spec 與 code 衝突 → 兩邊攤開、標明差異，不擅自二選一。
 - 既有專案主 spec 為空時，如何把「本來就對的行為」補進 `openspec/specs/`——目前唯一寫入路徑是 archive 一筆 change，缺一個正式入口
 - 跨專案共用 Arena（個人層級的知識庫）要不要做
 - `/opsx:*` 與 `/octopus:*` 共存的實際邊界（查詢類混用兩週後回頭看有沒有狀態漂移）
-- v0.x legacy openspec 專案的接管細節（要不要代跑 `openspec update` 升級）
+- v0.x legacy openspec 專案的接管細節：「要不要代跑 `openspec update`」已拍板**不代跑**（§5.3 代跑界線），待答的是實測——legacy 專案照「只提示、不代遷移」走，TPM 手動升級的摩擦有多大
 - 進度可見契約的實作成本：回合制讓同一個 builder 跨回合累積 context（雪球＋每回合往返成本）。成本咬人時可換 per-task 短命 builder 或等 harness 串流承接——都不動契約與 Builder persona
 - 目標專案的環境資訊（測試站/正式站）該不該由 `/octopus:init` 問一次並寫進目標 repo 的 `CLAUDE.md`——待實作
 

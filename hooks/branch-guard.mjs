@@ -62,7 +62,7 @@ export function evaluate(command, currentBranch) {
     ) {
       return [
         "⛔ Octopus branch-guard 擋下 force push。",
-        "紅線：絕不 force push（設計文件 §3.4 Builder 紅線）。",
+        "紅線：絕不 force push（設計文件 §3.5 Builder 紅線）。",
         "若 TPM 已明確同意，請在指令最前面加上 OCTOPUS_TPM_OK=1 再執行（留痕）。",
       ].join("\n");
     }
