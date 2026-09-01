@@ -54,7 +54,7 @@ claude --plugin-dir /path/to/octopus
 
 ## 實際跑起來長這樣
 
-> **待補**：一段完整的 `/octopus:spec` → 拍板 → `/octopus:build` → 驗收報告走查，展示兩個停點實際的樣子。
+一個小需求（「註冊時 email 重複要擋下，回友善錯誤而不是 500」）從 `/octopus:spec` 走到驗收 merge 的完整走查——包含 Analyst 會問你哪三題、決策卡長什麼樣、你在哪兩個點被要求做決定——見[使用指南的 worked example](docs/使用指南.md#走一次從需求到驗收worked-example)。
 
 ## 七隻腳
 
@@ -135,7 +135,7 @@ claude --plugin-dir /path/to/octopus
 
 ## 已知限制
 
-- **hooks 會在你的機器上執行 node**：`hooks/hooks.json` 註冊兩個 PreToolUse hook，以你的權限執行 `hooks/*.mjs`。兩支都是純 node、零相依、fail-open，程式碼在 repo 內可自行檢視，並附回歸測試（專案根 `node --test`）。
+- **hooks 會在你的機器上執行 node**：`hooks/hooks.json` 註冊兩個 PreToolUse hook，以你的權限執行 `hooks/*.mjs`。兩支都是純 node、零相依、fail-open，程式碼在 repo 內可自行檢視。回歸測試目前只涵蓋 `branch-guard`（專案根 `node --test`）；`spec-status-guard` 的判斷邏輯同樣以 `evaluate()` export，但測試尚未補上。
 - **builder agent 有 Bash 權限**：交付管線執行中，builder 會在你的專案裡執行指令（跑測試、git 操作）。`branch-guard` 只守 git 相關紅線，**不是通用沙箱**。
 - **prompt injection 未設防**：scout / reviewer / debugger 會讀取目標 repo 的內容，若其中含惡意指示，agent 可能被影響。這是所有 AI coding agent 的共同弱點，Octopus 沒有針對它的緩解措施。
 - **管線外沒有守門**：hooks 只在管線執行中生效；日常對話中的 git 操作零干預。
